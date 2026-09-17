@@ -234,6 +234,13 @@ the sessions that built this could not open external PDFs.
   and the report's "retained expenditure" is that same assumption applied to locals
   travelling *out* of the region, so it is not a resident-spending figure and `lo` is
   null. If more foreign studies are added, this is the row to model them on.
+  **The unsourced NZ$150 reads LOW, not high** — all 14 footnotes were extracted and
+  none sources a spending rate (fn.8, the only one on p.11, annotates the rider
+  count), but the Crankworx Rotorua benchmark the report itself cites at fn.14
+  implies NZ$856/visitor against BERL's NZ$375, and the Wairoa Gorge shuttle alone
+  is NZ$99/person/day. Tier stays L — that grades how a number was obtained, not
+  whether it is plausible. MBIE's Regional Tourism Estimates for Nelson-Tasman
+  divided by CAM guest nights would settle it; that check has not been run.
 - **Zero Wayback snapshots exist.** Every link is a live publisher URL carrying rot
   risk. `archiveUrl` / `origArchiveUrl` are wired and take precedence once populated.
 - **Five rows unlinked:** `pikes-overnight`, `pikes-daytrip`, `central-ohio`,
