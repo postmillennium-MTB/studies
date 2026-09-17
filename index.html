@@ -9,18 +9,25 @@
              search the ALL-CAPS section labels below to jump reliably)
 
   <head> / <style> ............... top of file
-    · THEME PALETTE (CSS) ......... "Ledger" default theme (only one shipped —
-                                     built on a THEMES registry so more can be
-                                     added later, one entry + one CSS block each)
-    · BASE + LAYOUT ............... body, masthead, wrap, tab nav
+    · PRE-PAINT THEME SHIM ........ the only logic outside the script block;
+                                     see its own comment for why it must be here
+    · THEME PALETTES (CSS) ........ "Ledger" (default, cream) and "Neon"
+                                     (1990s blacklight). One CSS block each,
+                                     driven by the THEMES registry below.
+    · BASE + LAYOUT ............... body, utility bar, masthead, wrap, tab nav
     · CHART ELEMENTS .............. bars, dots, unit badges, tooltip, legend
-    · CONTROLS .................... MTB-only toggle, reported-ranges toggle
+    · CONTROLS .................... MTB-only toggle, reported-ranges toggle,
+                                     theme switch, share button
 
   <script>
     ==== ALL DATA LIVES IN ONE CONTIGUOUS BLOCK AT THE TOP ====
     · SITES ....................... the big array — every study/site is one line
     · CONF_META ................... confidence tier -> label, color, description
     · UNIT_META ................... reporting unit (day/night/trip/visit) -> label
+    · FOREIGN_SITES ............... non-USD studies, read and tiered but held
+                                     out of the charts — see that array's comment
+    · SHARE + HOME ................ the canonical PMR addresses this tool hands
+                                     out, and the origins allowed to talk to it
     · THEMES registry ............. color themes — add one line to add one
     · TABS registry ............... the 3 tabs — add one line to add one
     · tuning constants ............ bar heights, dot radii, axis padding (named)
@@ -29,12 +36,18 @@
     · renderBySite() .............. "By Site" tab: paired local/non-local bars
     · renderRange() ............... "Range" tab: log-scale strip plot
     · renderSources() ............. "Sources & Methodology" tab
+    · theme switch ................ applyTheme / buildThemeSwitch
+    · share ....................... shareUrl / wireShare — native sheet, then
+                                     clipboard, then the old execCommand path
+    · deep links .................. hash + postMessage bridge into a tab
     · tooltip wiring, filters, init()
 
   TO ADD A SITE:      add ONE line to the SITES array. See the legend comment
                        directly above it for what each field means.
   TO ADD A TAB:       write your render function, then add ONE line to TABS.
-  TO ADD A THEME:     add ONE line to THEMES + one matching CSS [data-theme] block.
+                       It becomes shareable at /studies/#<id> for free.
+  TO ADD A THEME:     add ONE line to THEMES + one matching CSS [data-theme]
+                       block. Nothing else — not even the pre-paint shim.
   TO CHANGE THE DEFAULT THEME: see the specificity note in the CSS THEME section
                        before touching this — order matters there.
 ==================================================================================
@@ -43,9 +56,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Pre-JS defaults, matching the "Ledger" palette that :root paints. Kept at
+     "light" rather than "light dark" on purpose: the dark theme here is an
+     explicit choice made at the switch, never an OS preference, and handing the
+     OS the decision would draw dark native checkboxes over the cream palette.
+     applyTheme() writes html.style.colorScheme per theme, which outranks this. -->
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
-<meta name="theme-color" content="#f4ede1"><!-- kept in sync by applyTheme() -->
+<meta name="theme-color" content="#f4ede1"><!-- kept in sync by applyTheme() from THEMES[].paper -->
 <link rel="icon" href="favicon.ico">
 <link rel="icon" type="image/png" href="favicon-32x32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -54,20 +72,45 @@
 <meta property="og:title" content="Trail Visitor Spending Ledger">
 <meta property="og:description" content="Local vs. non-local mountain bike visitor spending, 21 site figures drawn from 16 published studies — confidence-tiered, units disclosed, nothing smoothed over.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://postmillennium-mtb.github.io/studies/">
+<!-- github.io is the ORIGIN this file is served from, not the address anyone
+     should be handed. The tool's real home is the PMR page that frames it, so
+     canonical, og:url and the Share button all say the same thing. og:image
+     stays on this repo's own file — it is the one asset PMR doesn't hold. -->
+<link rel="canonical" href="https://www.postmillenniumrenaissance.com/studies/">
+<meta property="og:url" content="https://www.postmillenniumrenaissance.com/studies/">
 <meta property="og:image" content="https://postmillennium-mtb.github.io/studies/apple-touch-icon.png">
 <meta name="twitter:image" content="https://postmillennium-mtb.github.io/studies/apple-touch-icon.png">
 <meta name="twitter:card" content="summary">
+<script>
+/* ==== PRE-PAINT THEME SHIM — the one piece of logic that cannot live in the
+   script block at the bottom of this file. By the time that block runs the page
+   has already painted, so a returning Neon visitor would get a frame of cream
+   first. This does the minimum and applyTheme() redoes all of it properly on
+   init. It is deliberately registry-AGNOSTIC: applyTheme writes the id and the
+   light/dark scheme together as "id|scheme", so adding a fourth palette never
+   means editing this. An id that no longer exists simply matches no CSS block
+   and :root (Ledger) paints, which is the right fallback anyway.
+   The storage key string is duplicated in THEME_STORAGE_KEY below ON PURPOSE —
+   this runs before that constant exists. Change one, change the other. ====== */
+(function(){
+  try{
+    var v=(localStorage.getItem("pmrStudiesTheme")||"").split("|");  // === THEME_STORAGE_KEY
+    if(/^[a-z0-9-]{1,24}$/.test(v[0])){
+      document.documentElement.setAttribute("data-theme",v[0]);
+      document.documentElement.style.colorScheme = v[1]==="dark" ? "dark" : "light";
+    }
+  }catch(e){ /* blocked third-party storage in an iframe — default paints */ }
+}());
+</script>
 <style>
-/* ==== THEME PALETTE — "Ledger" (default, and only theme shipped this pass). ====
-   Built as a registry from day one (see THEMES in the data block below) so a
-   second/third palette is one CSS block + one line, matching every other PMR
-   tool — nothing here is theme-agnostic that shouldn't be.
+/* ==== THEME PALETTE — "Ledger" (the default). =================================
+   One CSS block per theme, ids matching the THEMES registry in the data block.
    :root and [data-theme="ledger"] carry IDENTICAL specificity, so whichever is
    declared last wins on load. Keeping :root as the FIRST block, undecorated,
-   means first paint (before JS runs) already matches this theme. If a second
-   theme is ever added and made default: move the bare :root selector onto its
-   block, move that block above this one, and update the <meta theme-color> tag.
+   means first paint (before JS runs) already matches this theme. To make a
+   DIFFERENT theme the default: move the bare :root selector onto its block,
+   move that block above this one, set DEFAULT_THEME, and update the
+   <meta theme-color> tag. Order matters here — it is not cosmetic.
    ============================================================================ */
 :root{
   --paper:#f4ede1;       /* page background — warm ledger-paper cream */
@@ -90,6 +133,85 @@
   --tier-m:#a8791f;
   --tier-l:#a33d2e;
   --warn-bg:#fbeee7;
+  /* Surfaces that used to be hard-coded rgba-black literals down in the
+     components. They have to be per-theme: a 3%-black bar track is simply
+     invisible on a dark ground. */
+  --badge-ink:#fff;      /* text inside a filled tier badge */
+  --track-bg:#00000008;  /* the empty part of a bar track */
+  --chip-bg:#00000010;   /* unit badge, "archived" flag */
+  --tip-bg:#2b2420;      /* tooltip — inverted against the page in this theme */
+  --tip-ink:#f4ede1;
+  --tip-strong:#fff;
+  --tip-note:#d9cdbd;
+  /* Structural theme vars, the Patent Atlas pattern: a theme can change how the
+     tool CARRIES itself, not just its colors. The Ledger is printed matter, so
+     it glows not at all and shouts not at all — every one of these is a no-op
+     here and earns its keep in the Neon block below. */
+  --rule-bg:var(--accent);   /* the short masthead accent rule */
+  --mast-rule:var(--ink);    /* the full-width rule under the masthead */
+  --card-glow:0 0 0 #0000;   /* a transparent shadow, NOT "none" — this sits in
+                                comma-separated box-shadow lists, and "none" is
+                                illegal as a list item and kills the whole rule */
+  --head-glow:none;          /* text-shadow; used alone, so "none" is fine */
+  --head-transform:none;
+  --head-spacing:normal;
+}
+
+/* ==== THEME PALETTE — "Neon" (second theme; 1990s arcade blacklight). ========
+   Declared AFTER :root deliberately — see the specificity note above. It can
+   only win while data-theme="neon" is on <html>, so first paint (no attribute
+   yet) is still the Ledger.
+
+   THE SIDE COLORS MOVE HERE, and that is a deliberate exception to the "meaning
+   colors stay fixed across themes" rule stated in :root. Rust (#b5482a) and
+   moss (#3d6b52) both sit around 5:1 against cream and under 2:1 against this
+   near-black — on a dark ground they go muddy and stop being readable, which is
+   a worse failure than the one the rule guards against. What has to survive is
+   the MAPPING, and it does: warm = non-local, cool = local, exactly as in the
+   Ledger, so nothing is re-learned when the switch is flipped. Magenta/cyan is
+   also the more deuteranopia-safe of the two pairs — closer to the wheel
+   widget's Okabe-Ito thinking than rust/moss ever was. And the meaning never
+   rested on color alone in the first place: every bar carries its side as a
+   text label, and every row lists both sides in the source table.
+   Every value below clears WCAG AA (4.5:1) against both --paper and --card.
+   ============================================================================ */
+[data-theme="neon"]{
+  --paper:#0d0b1a;       /* deep indigo-black — the blacklight, not the poster */
+  --ink:#f2e9ff;
+  --ink-soft:#a99ec9;
+  --line:#4d3f85;
+  --card:#151130;
+  --accent:#c77dff;      /* electric violet — chrome only, same contract as the
+                            Ledger's brown. Deliberately NOT magenta or cyan:
+                            both of those carry data meaning in this theme, and
+                            the accent must never read as a result. */
+  --nonlocal:#ff2d95;    /* hot magenta — non-local / out-of-town (warm) */
+  --local:#00e5ff;       /* cyan — local / resident (cool) */
+  /* The -soft pair is the second stripe of the hatched "reported range"
+     extension. On cream it is a pale tint; against black it has to go the other
+     way, darker, or the hatch flattens into a solid bar. */
+  --nonlocal-soft:#6b1145;
+  --local-soft:#08596b;
+  --tier-v:#39ff88;
+  --tier-m:#ffd028;
+  --tier-l:#ff5c7a;
+  --warn-bg:#2a1030;
+  --badge-ink:#0d0b1a;   /* dark text on a bright badge. White on neon green is
+                            about 1.3:1 — unreadable. */
+  --track-bg:#ffffff12;
+  --chip-bg:#ffffff14;
+  --tip-bg:#1b1540;      /* NOT inverted here: a cream tooltip on a black page
+                            is a flashbulb. This floats above the card instead. */
+  --tip-ink:#f2e9ff;
+  --tip-strong:#fff;
+  --tip-note:#a99ec9;
+  --rule-bg:linear-gradient(90deg,#ff2d95,#c77dff,#00e5ff);
+  --mast-rule:var(--accent); /* --ink here would be a near-white bar across the
+                                page: loud, and redundant beside the gradient */
+  --card-glow:0 0 0 1px #ffffff0a, 0 0 18px #c77dff1f;
+  --head-glow:0 0 10px #ff2d9599, 0 0 22px #c77dff55;
+  --head-transform:uppercase;
+  --head-spacing:.045em;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -97,15 +219,96 @@ body{
   background:var(--paper);color:var(--ink);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   -webkit-font-smoothing:antialiased;
+  /* The filter bar uses real <input type="checkbox">. This is what makes them
+     follow the theme instead of staying browser-blue in both palettes. */
+  accent-color:var(--accent);
 }
 a{color:var(--accent)}
 .wrap{max-width:980px;margin:0 auto;padding:14px 14px 40px}
 
+/* ── Utility bar — PMR home (left), theme switch + share (right) ────────────
+   This tool always runs inside a cross-origin iframe: the PMR wrapper page, and
+   Pinkbike articles. That is why the home link carries target="_top". Without
+   it the whole site loads INSIDE the embed, a frame within a frame. This has
+   bitten before; do not remove it. ──────────────────────────────────────────── */
+.utilbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 0 6px}
+.util-right{display:flex;align-items:center;gap:8px;flex:none}
+.pmr-link{
+  display:inline-flex;align-items:center;gap:5px;flex:none;
+  min-height:40px;padding:2px 2px;border-radius:6px;
+  color:var(--ink-soft);text-decoration:none;
+  font-size:.78rem;font-weight:700;letter-spacing:.02em;
+}
+.pmr-link:hover{color:var(--accent)}
+.pmr-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pmr-link svg{width:15px;height:15px;flex:none}
+/* Mobile-first: the short mark is the base, and the full name appears only once
+   there is room for it beside the switch and the share button. */
+.pmr-full{display:none}
+
+/* ── Theme switch — BUILT FROM THE `THEMES` REGISTRY by buildThemeSwitch() ──
+   Two segments today, N if a third palette is ever added, with no markup here
+   to touch. ────────────────────────────────────────────────────────────────── */
+.themeswitch{
+  display:inline-flex;align-items:center;gap:2px;flex:none;
+  background:var(--card);border:1px solid var(--line);border-radius:999px;padding:2px;
+}
+.themebtn{
+  appearance:none;cursor:pointer;font:inherit;font-size:.72rem;font-weight:700;
+  display:inline-flex;align-items:center;gap:5px;
+  min-height:36px;padding:4px 9px;border:1px solid transparent;border-radius:999px;
+  background:none;color:var(--ink-soft);white-space:nowrap;
+}
+.themebtn[aria-pressed="true"]{background:var(--paper);color:var(--ink);border-color:var(--line)}
+.themebtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* A split chip, not a single square: one color tells you nothing about a
+   palette, and these two palettes differ most in the pair that carries meaning. */
+/* The hairline is load-bearing, not decoration: the Ledger chip's second stop
+   is the cream paper itself, which would otherwise vanish into the button. A
+   translucent black works on both palettes — it darkens a pale edge and defines
+   a bright one. */
+.themeswatch{width:14px;height:14px;border-radius:3px;flex:none;border:1px solid #00000022}
+
+/* ── Share — see wireShare() for why this is an <a> and not a <button> ────── */
+.share-wrap{position:relative;display:inline-flex;flex:none}
+.share-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:40px;height:40px;flex:none;
+  background:var(--card);border:1px solid var(--line);border-radius:999px;
+  color:var(--ink-soft);cursor:pointer;text-decoration:none;
+  transition:color .2s,border-color .2s;
+}
+.share-btn:hover{color:var(--accent);border-color:var(--accent)}
+.share-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.share-btn svg{width:17px;height:17px;display:block}
+.share-btn .ico{display:flex}
+.share-btn .ico[hidden]{display:none}
+/* Status pill. BELOW the button, not left of it: to the left it lands on top of
+   the theme switch and reads as a glitch rather than as feedback. It sits
+   OUTSIDE the anchor so its text never becomes part of the link's accessible
+   name, and carries role="status" so the result is announced, not only shown. */
+.share-status{
+  position:absolute;top:calc(100% + 6px);right:0;
+  background:var(--accent);color:var(--badge-ink);
+  font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:4px 8px;border-radius:4px;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.share-wrap.flash .share-status{opacity:1}
+@media(prefers-reduced-motion:reduce){
+  .share-btn,.share-status{transition:none}
+}
+
 /* ── Masthead ─────────────────────────────────────────────────────────────── */
-.masthead{border-bottom:3px solid var(--ink);padding:10px 0 12px;margin-bottom:14px}
-.masthead h1{font-size:1.32rem;margin:0 0 4px;line-height:1.2}
+.masthead{border-bottom:3px solid var(--mast-rule);padding:10px 0 12px;margin-bottom:14px}
+.masthead h1{
+  font-size:1.32rem;margin:0 0 4px;line-height:1.2;
+  /* Set by the active theme: the Ledger leaves all three inert, the Neon
+     palette uppercases, tracks out and lights the title. */
+  text-transform:var(--head-transform);letter-spacing:var(--head-spacing);text-shadow:var(--head-glow);
+}
 .masthead .tagline{color:var(--ink-soft);font-size:.88rem;margin:0}
-.masthead .accent-rule{height:3px;background:var(--accent);width:56px;margin-top:8px;border-radius:2px}
+.masthead .accent-rule{height:3px;background:var(--rule-bg);width:56px;margin-top:8px;border-radius:2px}
 
 /* ── Tabs (built from the TABS registry in the script below) ────────────────── */
 .tabbar{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 12px;border-bottom:1px solid var(--line);padding-bottom:0}
@@ -123,7 +326,7 @@ a{color:var(--accent)}
 .filterbar{
   display:flex;flex-wrap:wrap;gap:10px;align-items:center;
   background:var(--card);border:1px solid var(--line);border-radius:10px;
-  padding:10px 12px;margin-bottom:14px;font-size:.84rem;
+  padding:10px 12px;margin-bottom:14px;font-size:.84rem;box-shadow:var(--card-glow);
 }
 .filterbar label{display:flex;align-items:center;gap:6px;cursor:pointer;min-height:40px}
 .filterbar input[type="checkbox"]{width:17px;height:17px}
@@ -151,7 +354,7 @@ a{color:var(--accent)}
 .tierbadge{
   display:inline-flex;align-items:center;justify-content:center;
   width:16px;height:16px;border-radius:4px;font-size:.66rem;font-weight:800;
-  color:#fff;flex:none;
+  color:var(--badge-ink);flex:none;
 }
 
 /* ── Site rows (By Site tab) ─────────────────────────────────────────────── */
@@ -163,7 +366,7 @@ a{color:var(--accent)}
 .bargroup{display:flex;flex-direction:column;gap:5px}
 .barline{display:flex;align-items:center;gap:8px}
 .barlabel{width:64px;flex:none;font-size:.72rem;font-weight:700;text-align:right;color:var(--ink-soft)}
-.bartrack{flex:1;position:relative;height:22px;background:#00000008;border-radius:4px;overflow:visible}
+.bartrack{flex:1;position:relative;height:22px;background:var(--track-bg);border-radius:4px;overflow:visible}
 .barfill{position:absolute;left:0;top:0;height:100%;border-radius:4px;min-width:3px;cursor:pointer}
 .barfill.local{background:var(--local)}
 .barfill.nonlocal{background:var(--nonlocal)}
@@ -176,32 +379,68 @@ a{color:var(--accent)}
 .barval{font-size:.72rem;font-weight:700;color:var(--ink);white-space:nowrap;flex:none}
 .unitbadge{
   font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em;
-  color:var(--ink-soft);background:#00000010;border-radius:3px;padding:1px 4px;flex:none;
+  color:var(--ink-soft);background:var(--chip-bg);border-radius:3px;padding:1px 4px;flex:none;
 }
 .calcflag{font-size:.68rem;color:var(--tier-m);font-style:italic}
 .nodata{font-size:.72rem;color:var(--ink-soft);font-style:italic;padding:2px 0}
 
 /* ── Range tab (strip plot) ───────────────────────────────────────────────── */
-.rangewrap{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 10px 8px}
+.rangewrap{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 10px 8px;box-shadow:var(--card-glow)}
 .rangesvg{display:block;width:100%}
 .rangedot{cursor:pointer}
 .rangecap{font-size:.74rem;color:var(--ink-soft);margin-top:8px}
 
 /* ── Tooltip ──────────────────────────────────────────────────────────────── */
 .tooltip{
-  position:fixed;max-width:270px;background:var(--ink);color:var(--paper);
+  position:fixed;max-width:270px;background:var(--tip-bg);color:var(--tip-ink);
   font-size:.76rem;line-height:1.35;padding:9px 11px;border-radius:8px;
-  pointer-events:none;z-index:50;display:none;box-shadow:0 6px 18px #00000030;
+  pointer-events:none;z-index:50;display:none;box-shadow:0 6px 18px #00000030,var(--card-glow);
 }
-.tooltip b{color:#fff}
-.tooltip .tt-note{color:#d9cdbd;display:block;margin-top:5px}
+.tooltip b{color:var(--tip-strong)}
+.tooltip .tt-note{color:var(--tip-note);display:block;margin-top:5px}
 
 /* ── Sources tab ──────────────────────────────────────────────────────────── */
-.srcnote{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:.85rem;line-height:1.5}
+.srcnote{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:.85rem;line-height:1.5;box-shadow:var(--card-glow)}
 .srcnote h3{margin:0 0 6px;font-size:.94rem}
+/* ── Source tables ────────────────────────────────────────────────────────
+   Mobile-first, and here that is not a stylistic preference — it is the fix for
+   a real bug. Six columns of citation text have an intrinsic width of ~628px.
+   A table that wide inside overflow-x:auto does NOT stay inside it: Chromium
+   propagates the table's intrinsic width up to the root scroller, and the whole
+   page pans sideways by 166px on a 360px phone. Everything obvious was tried
+   and none of it works — max-width:100% on the wrapper, overflow:hidden on the
+   card, grid-template-columns:minmax(0,1fr) on the ancestors, contain. The two
+   that do move the number are both worse than the bug: table-layout:fixed gives
+   six 50px columns, and overflow-x:hidden on <html> only blocks the USER from
+   panning (window.scrollTo still moves it) and is unreliable on iOS.
+   Beware the probe, too: document.body.scrollWidth stays at 360 and reports no
+   problem. Only window.scrollX after an attempted scroll catches this.
+   So the phone doesn't get a table at all. Each study stacks into a card with
+   its field names on the cells (data-label, set in renderSources), which is
+   better to read on a phone than a six-column sideways scroller anyway. The
+   table comes back at 640px in the min-width block below. ─────────────────── */
 .srctable{width:100%;border-collapse:collapse;font-size:.78rem}
-.srctable th,.srctable td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
-.srctable th{color:var(--ink-soft);font-size:.7rem;text-transform:uppercase;letter-spacing:.03em}
+.srctable tr{display:block;border-bottom:1px solid var(--line);padding:9px 0}
+.srctable tr:last-child{border-bottom:none}
+.srctable tr:first-child{display:none}   /* header row — its labels move onto the cells */
+/* flex-wrap matters: without it the 96px label and the cell's min-content sit
+   side by side and set a floor the card can't go under, which pans the page on
+   a 320px screen. Wrapping lets a long value drop below its own label instead. */
+.srctable td{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;border:none;padding:2px 0;text-align:left}
+.srctable td::before{
+  content:attr(data-label);flex:0 0 96px;
+  color:var(--ink-soft);font-size:.66rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.03em;
+}
+/* The site name is the card's heading, not another labelled field. */
+.srctable td.srccell-site{display:block;font-weight:700;font-size:.86rem;margin-bottom:5px}
+.srctable td.srccell-site::before{content:none}
+.srctable th{text-align:left;padding:7px 6px;color:var(--ink-soft);font-size:.7rem;text-transform:uppercase;letter-spacing:.03em;vertical-align:top}
+/* The two spending columns. The swatch in the header is the same one the legend
+   and the bars use, so the table reads as the same data rather than a second,
+   unrelated list — but the column HEADING carries the words, never the color. */
+.srctable th .swatch{vertical-align:-2px;margin-right:5px}
+.srcval{font-weight:700}
 .excludelist{font-size:.82rem;line-height:1.6}
 .srccount{font-weight:400;color:var(--ink-soft);font-size:.82em}
 .srclink{color:var(--accent);text-decoration:none;font-weight:600}
@@ -211,7 +450,7 @@ a{color:var(--accent)}
 .origlink{white-space:nowrap;margin-left:2px}
 .origlink .srclink{font-weight:600;font-size:.92em;opacity:.88}
 .archflag{display:inline-block;margin-left:5px;font-size:.62rem;font-weight:700;text-transform:uppercase;
-  letter-spacing:.02em;color:var(--ink-soft);background:#00000010;border-radius:3px;padding:1px 4px;white-space:nowrap}
+  letter-spacing:.02em;color:var(--ink-soft);background:var(--chip-bg);border-radius:3px;padding:1px 4px;white-space:nowrap}
 /* Visually hidden but read aloud — the icon is decorative, so the "new tab"
    warning has to reach a screen reader some other way. */
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
@@ -222,6 +461,17 @@ footer a:hover{text-decoration:underline}
 
 /* ── Mobile-first: this block widens things for larger screens ──────────────── */
 @media(min-width:640px){
+  .pmr-full{display:inline}
+  .pmr-short{display:none}
+  /* Back to a real table once there is room for one. See the bug note above
+     for why the phone doesn't get this. */
+  .srctable tr,.srctable tr:first-child{display:table-row;border-bottom:none;padding:0}
+  .srctable td{display:table-cell;border-bottom:1px solid var(--line);padding:7px 6px;vertical-align:top}
+  .srctable td::before{content:none}
+  .srctable td.srccell-site{display:table-cell;font-weight:400;font-size:inherit;margin-bottom:0}
+  /* Keeps "$138.49 /day" on one line in a column. On the phone's stacked layout
+     it instead sets a min-content floor that pans the page — see the note above. */
+  .srcval{white-space:nowrap}
   .masthead h1{font-size:1.6rem}
   .barlabel{width:78px;font-size:.76rem}
   .siterow-name{font-size:.94rem}
@@ -230,6 +480,32 @@ footer a:hover{text-decoration:underline}
 </head>
 <body>
 <div class="wrap">
+
+  <!-- Utility bar. The theme switch is BUILT FROM THE `THEMES` REGISTRY by
+       buildThemeSwitch(); the share link's href is kept in step with the active
+       tab by syncShareHref(). The two URLs written out below are the only place
+       in the file that repeats PMR_HOME_URL / SHARE_URL, and they are here so
+       that BOTH links still work if the script never runs at all. -->
+  <div class="utilbar">
+    <a class="pmr-link" href="https://www.postmillenniumrenaissance.com/" target="_top">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      <span class="pmr-short">PMR</span><span class="pmr-full">Post Millennium Renaissance</span>
+    </a>
+    <div class="util-right">
+      <div class="themeswitch" id="themeSwitch" role="group" aria-label="Color scheme"></div>
+      <span class="share-wrap" id="shareWrap">
+        <span class="share-status" id="shareStatus" role="status"></span>
+        <a class="share-btn" id="shareBtn" href="https://www.postmillenniumrenaissance.com/studies/" target="_top">
+          <!-- lucide "send". Deliberately not the three-node share glyph the PMR
+               homepage cards use: that one marks "share this tool" from a grid of
+               tools, this is the send action on the tool you are already in. -->
+          <span class="ico ico-share"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></span>
+          <span class="ico ico-check" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span class="sr-only">Share this tool</span>
+        </a>
+      </span>
+    </div>
+  </div>
 
   <div class="masthead">
     <h1>Trail Visitor Spending Ledger</h1>
@@ -362,6 +638,51 @@ const UNIT_META={day:"/day",night:"/night",trip:"/trip",visit:"/visit"};
 const ORIG_LINK_ICON=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
 const SRC_LINK_ICON=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg>`;
 
+/* ==== FOREIGN_SITES — non-USD studies, HELD OUT of the charts on purpose. ====
+   Same field contract as SITES, plus two:
+     cur     ISO code of the currency the source reported in
+     curSym  how that currency prints, e.g. "NZ$"
+
+   Nothing reads this array except renderSources(). These rows are deliberately
+   NOT in SITES, because both charts share one dollar axis: NZ$150 would draw a
+   slightly longer bar than Coldwater's US$138.49 and read as the larger figure.
+   That is a different failure from the cross-UNIT tension the tool already
+   accepts and warns about. A reader seeing "/day" next to "/trip" knows the
+   comparison is loose; a reader seeing two bare dollar bars assumes the currency
+   was handled, because converting currency is trivial in a way that converting
+   "per trip" into "per day" is not.
+
+   TO TURN ON A NORMALIZED-CURRENCY VIEW: add a toggle, and add an FX table. The
+   table is the whole job, and it is not one number — "normalized" means nothing
+   until the screen says WHICH rate and AS OF WHEN. Year-of-study rate and
+   today's rate give materially different answers and answer different
+   questions; whichever is chosen has to be shown, not assumed. Until then these
+   rows print in their own currency and are compared to nothing.
+   ============================================================================ */
+const FOREIGN_SITES=[
+{id:"nelson-nz",site:"Nelson–Tasman MTB Trails",st:"Nelson, NZ",yr:2018,mtb:"y",unit:"day",cur:"NZD",curSym:"NZ$",nl:150,lo:null,conf:"l",calc:false,src:"Cox, Drew & Dixon 2018 (BERL) for Nelson City Council, pp.2, 9, 11",url:"https://www.nelson.govt.nz/repository/libraries/id:2r883m1me1cxbyryo0mp/hierarchy/5Community/Recreation/Mountain%20Biking%20in%20Whakat%C5%AB%20Nelson/BERL-Economic-benefits-of-Mountain-Biking-for-Nelson-Final-report-13Feb2018.pdf",archiveUrl:null,note:"The NZ$150/day is an ASSUMPTION, not a measurement. It appears three times (pp.11, 18) and is never sourced — the report gives only a rationale for adjusting it downward (\u201Callowing for the fact that a good number of visitors will be staying with friends and relatives\u201D). It is also per VISITOR, and the visitor count adds one non-riding partner for every other rider (43,875 visitors from 29,250 riders, p.11), so the denominator is party members, not riders. The 2.5 nights it multiplies is the Commercial Accommodation Monitor average for ALL visitors to the region, not for mountain bikers. Method was interviews with local MTB groups and commercial operators (p.2), not a rider survey; BERL\u2019s own recommendation (p.ii) is that the council commission one to establish \u201Clocal vs visitor use, frequency of use, visitor spend and length of stay\u201D. NO RESIDENT FIGURE: the NZ$0.6m \u201Cretained expenditure\u201D is this same NZ$150 assumption applied to a counterfactual \u2014 10% of local riders taking one 2.5-night trip OUTSIDE the region if Nelson had no MTB. That is displaced spending elsewhere, not resident spending at the trails, and is not the same quantity as the Local column. Data year 2017; yr is the publication year."},
+];
+
+/* ==== SHARE + HOME — where this tool actually lives. ========================
+   This file is SERVED from postmillennium-mtb.github.io. That is an origin, not
+   an address to hand anybody: the PMR page is the one with the site chrome, the
+   OG card and the name people recognise, and it is what <link rel="canonical">
+   and og:url point at. So everything shareable points there too. Change it here
+   and the Share button, its href and the copied string all follow.
+   The host is the www form on purpose — it matches the CNAME file and the
+   sitemap, so a shared link never eats a redirect.
+   ============================================================================ */
+const PMR_HOME_URL="https://www.postmillenniumrenaissance.com/";
+const SHARE_URL="https://www.postmillenniumrenaissance.com/studies/";
+const SHARE_TITLE="Trail Visitor Spending Ledger";
+
+/* ==== PMR_ORIGINS — the only origins allowed to drive this tool by
+   postMessage, checked on EVERY message before anything is read out of it. An
+   iframe hears from whoever embeds it, and on Pinkbike that is not PMR: there
+   the bridge simply never fires and the tool opens on its default tab, which is
+   the required behaviour, not a degraded one. =============================== */
+const PMR_ORIGINS=["https://www.postmillenniumrenaissance.com","https://postmillenniumrenaissance.com"];
+
 /* ==== EXCLUSIONS — studies that were looked at and deliberately left out,
    with the reason. A registry, not hard-coded markup, so adding an exclusion
    is a one-line edit like adding a site.
@@ -388,13 +709,35 @@ const EXCLUSIONS=[
 
 /* ==== THEMES REGISTRY — the single source of truth for every color theme.
    TO ADD A THEME: add ONE entry here, then add a matching CSS [data-theme]
-   block above. Only "ledger" ships this pass; kept as a registry (not a single
-   hard-coded palette) so a second theme is a one-line addition later, same
-   pattern as every other PMR tool. ============================================ */
+   block above. Those two, and nothing else — the switch, the theme-color meta,
+   the native-control color scheme and the stored preference all derive from
+   this array. The CSS block genuinely cannot be generated from here (custom
+   properties can't be written by JS), which is the one part of a theme that is
+   not a single line.
+     id        matches the CSS [data-theme="…"] selector, and is what gets
+               written to localStorage
+     label     the visible text on the switch button
+     swatch /  the two stops of the preview chip. Two, not one, because a single
+     swatch2   square tells you nothing about a palette — these are the paper
+               and the color that most distinguishes the theme from its sibling.
+     paper     the page background, pushed to <meta name="theme-color"> so the
+               mobile browser chrome matches the page instead of fighting it
+     scheme    "light" | "dark" — written to html.style.colorScheme so the NATIVE
+               checkboxes in the filter bar render the right way round. Without
+               it the Neon theme draws white checkboxes on a black page.
+   ============================================================================ */
 const THEMES=[
-  {id:"ledger", label:"Ledger", swatch:"#8a5a2b"},
+  {id:"ledger", label:"Ledger", swatch:"#8a5a2b", swatch2:"#f4ede1", paper:"#f4ede1", scheme:"light"},
+  {id:"neon",   label:"Neon",   swatch:"#ff2d95", swatch2:"#00e5ff", paper:"#0d0b1a", scheme:"dark"},
 ];
 const DEFAULT_THEME="ledger";
+/* localStorage is a PREFERENCE store here and nothing else: the tool works
+   identically with it empty, blocked or full of junk, which it will be inside a
+   third-party iframe on Safari. The stored value is "id|scheme" rather than
+   just the id so the pre-paint shim in <head> can set both without knowing this
+   registry exists — see that shim's comment. The key string is duplicated
+   there ON PURPOSE. Change one, change the other. */
+const THEME_STORAGE_KEY="pmrStudiesTheme";
 
 /* ==== TABS REGISTRY — the single source of truth for every tab. ============
    TO ADD A TAB: write your render function, then add ONE line here. The
@@ -447,6 +790,23 @@ function fmtMoney(v){
   // integer; anything else always shows exactly two decimal places.
   const cents=Math.round(v*100);
   return cents%100===0 ? "$"+(cents/100) : "$"+(cents/100).toFixed(2);
+}
+// The string a figure prints as: "$138.49", or "$83–$126" when the source gave
+// a range. Shared by the bars and the source table so the same number can never
+// end up rendered two different ways in the same tool. `withHi` is a parameter
+// rather than a read of filterShowRanges because the two callers genuinely
+// differ — see srcValueCell().
+function fmtValue(s,key,withHi){
+  const val=s[key], hi=s[key+"Hi"];
+  if(val==null) return null;
+  return (withHi && hi!=null) ? `${fmtMoney(val)}–${fmtMoney(hi)}` : fmtMoney(val);
+}
+// Same string fmtValue builds, with the row's own currency mark swapped in for
+// the bare "$". A NZ figure must never be able to read as USD — that is the
+// whole reason FOREIGN_SITES is held apart from SITES.
+function fmtForeign(s,key){
+  const v=fmtValue(s,key,true);
+  return v==null ? null : v.split("$").join(s.curSym);
 }
 function tierBadge(tier){
   // Never throw on a bad `conf` — see CONF_FALLBACK in the data block for why.
@@ -552,7 +912,7 @@ function barLine(label,s,key,cls){
     ? `<span class="barfill ${cls} rangelow" ${at} style="width:${pxLo}%"></span>` +
       `<span class="barfill range ${cls==='local'?'localrange':''} rangeext" ${at} style="left:${pxLo}%;width:${Math.max(0,pxHi-pxLo)}%"></span>`
     : `<span class="barfill ${cls}" ${at} style="width:${pxLo}%"></span>`;
-  const displayVal = showHi ? `${fmtMoney(val)}–${fmtMoney(hi)}` : fmtMoney(val);
+  const displayVal = fmtValue(s,key,showHi);
   return `<div class="barline">
     <span class="barlabel">${esc(label)}</span>
     <span class="bartrack">${fills}</span>
@@ -650,6 +1010,22 @@ function rangeDotSvg(s,which,val,x,y,color,isHiEnd){
 /* ==== renderSources() — methodology, tier legend, full citation table,
    and the deliberate exclusions — same "what's excluded and why" discipline
    as the Trail Advocacy Atlas README. ============================================ */
+// One spending cell of the source table. The table used to carry no figures at
+// all — only the citation — so there was nothing on it saying which number was
+// the visitor's and which was the resident's. These two columns are that answer,
+// and they carry the same swatch, unit badge and "not reported" wording as the
+// charts so the two views read as one dataset.
+function srcValueCell(s,key,label){
+  // ALWAYS prints the full reported range, unlike the bars. The "Show reported
+  // ranges" control is hidden on this tab (TABS[].ranges), so a viewer who
+  // switched it off on a chart would otherwise be shown bare low bounds here
+  // with no visible control to turn them back on.
+  const v=fmtValue(s,key,true);
+  const at=`data-label="${esc(label)}"`;
+  if(v==null) return `<td ${at}><span class="nodata">not reported</span></td>`;
+  const calc=s.calc?' <span class="calcflag" title="Claude-assisted calculation — see the note">calc</span>':'';
+  return `<td class="srcval" ${at}>${v}<span class="unitbadge">${UNIT_META[s.unit]}</span>${calc}</td>`;
+}
 function renderSources(container){
   let tierRows="";
   Object.keys(CONF_META).forEach(k=>{
@@ -660,15 +1036,38 @@ function renderSources(container){
   EXCLUSIONS.forEach(x=>{
     exclusionRows+=`<li><b>${esc(x.what)}</b> (${linkedText(x,x.cite)}) — ${esc(x.why)}</li>`;
   });
+  // Held rows ignore every filter: they are a short, fixed list that exists to be
+  // read, not a dataset to slice. Values print in their own currency.
+  let foreignRows="";
+  FOREIGN_SITES.forEach(s=>{
+    const cell=(k,label)=>{
+      const v=fmtForeign(s,k), at=`data-label="${esc(label)}"`;
+      return v==null
+        ? `<td ${at}><span class="nodata">not reported</span></td>`
+        : `<td class="srcval" ${at}>${esc(v)}<span class="unitbadge">${UNIT_META[s.unit]}</span><span class="unitbadge">${esc(s.cur)}</span></td>`;
+    };
+    foreignRows+=`<tr>
+      <td class="srccell-site">${esc(s.site)} (${esc(s.st)}, ${s.yr})</td>
+      ${cell("nl","Non-local")}
+      ${cell("lo","Local")}
+      <td data-label="Confidence">${tierBadge(s.conf)}</td>
+      <td data-label="Source">${srcCell(s)}</td>
+      <td data-label="Note">${esc(s.note||"")}</td>
+    </tr>`;
+  });
   let srcRows="";
   const srcSites=visibleSites();
-  if(!srcSites.length) srcRows=`<tr><td colspan="4" class="nodata">No studies match the current filters.</td></tr>`;
+  if(!srcSites.length) srcRows=`<tr><td colspan="6" class="nodata srccell-site">No studies match the current filters.</td></tr>`;
   srcSites.forEach(s=>{
+    // data-label is what the phone layout prints in place of the column heading
+    // it doesn't have — see the CSS note on .srctable.
     srcRows+=`<tr>
-      <td>${esc(s.site)} (${esc(s.st)}, ${s.yr})${s.mtb==='n'?' <em>— not MTB-specific</em>':''}</td>
-      <td>${tierBadge(s.conf)}</td>
-      <td>${srcCell(s)}</td>
-      <td>${esc(s.note||"")}</td>
+      <td class="srccell-site">${esc(s.site)} (${esc(s.st)}, ${s.yr})${s.mtb==='n'?' <em>— not MTB-specific</em>':''}</td>
+      ${srcValueCell(s,"nl","Non-local")}
+      ${srcValueCell(s,"lo","Local")}
+      <td data-label="Confidence">${tierBadge(s.conf)}</td>
+      <td data-label="Source">${srcCell(s)}</td>
+      <td data-label="Note">${esc(s.note||"")}</td>
     </tr>`;
   });
   container.innerHTML=`
@@ -679,7 +1078,12 @@ function renderSources(container){
     <div class="srcnote">
       <h3>Source table <span class="srccount">— showing ${srcSites.length} of ${SITES.length} studies</span></h3>
       <div style="overflow-x:auto"><table class="srctable">
-        <tr><th>Site</th><th>Confidence</th><th>Source</th><th>Note</th></tr>
+        <tr>
+          <th>Site</th>
+          <th><span class="swatch" style="background:var(--nonlocal)"></span>Non-local / out-of-town</th>
+          <th><span class="swatch" style="background:var(--local)"></span>Local / resident</th>
+          <th>Confidence</th><th>Source</th><th>Note</th>
+        </tr>
         ${srcRows}
       </table></div>
     </div>
@@ -691,15 +1095,79 @@ function renderSources(container){
       <h3>Excluded — no usable day/trip figure found</h3>
       <ul class="excludelist">${exclusionRows}</ul>
     </div>
+    <div class="srcnote">
+      <h3>Held out of the charts — reported in another currency <span class="srccount">— ${FOREIGN_SITES.length} ${FOREIGN_SITES.length===1?"study":"studies"}</span></h3>
+      <p style="margin:0 0 10px">Read, tiered and recorded, but not plotted. Both charts share one dollar
+      axis, and a figure in another currency drawn on it would read as directly comparable when it is not.
+      These print in the currency their source used, compared to nothing. A normalized view needs an exchange
+      rate, and a rate is only honest if the screen says which one and as of when — so that is a deliberate
+      gap, not an oversight.</p>
+      <div style="overflow-x:auto"><table class="srctable">
+        <tr>
+          <th>Site</th>
+          <th><span class="swatch" style="background:var(--nonlocal)"></span>Non-local / out-of-town</th>
+          <th><span class="swatch" style="background:var(--local)"></span>Local / resident</th>
+          <th>Confidence</th><th>Source</th><th>Note</th>
+        </tr>
+        ${foreignRows}
+      </table></div>
+    </div>
   `;
 }
 
-/* ── tab wiring, filter wiring, theme, init ──────────────────────────────── */
+/* ── tab wiring, filter wiring, theme, share, deep links, init ───────────── */
+
+/* ── Theme ────────────────────────────────────────────────────────────────
+   Everything here reads the THEMES registry; nothing knows a theme id by name.
+   An unknown id falls back to THEMES[0] rather than throwing or painting a
+   half-applied palette. ──────────────────────────────────────────────────── */
 function applyTheme(id){
-  document.documentElement.setAttribute("data-theme",id);
   const t=THEMES.find(x=>x.id===id) || THEMES[0];
+  document.documentElement.setAttribute("data-theme",t.id);
   // theme-color meta stays in step for the mobile browser chrome
-  document.querySelector('meta[name="theme-color"]').setAttribute("content", id==="ledger" ? "#f4ede1" : "#f4ede1");
+  document.querySelector('meta[name="theme-color"]').setAttribute("content", t.paper);
+  // Explicit per theme rather than left to the OS — see the color-scheme meta
+  // comment in <head>. This is what keeps the native checkboxes right way round.
+  document.documentElement.style.colorScheme=t.scheme;
+  document.querySelectorAll(".themebtn").forEach(b=>{
+    b.setAttribute("aria-pressed", String(b.dataset.theme===t.id));
+  });
+  // Stored as "id|scheme" for the pre-paint shim in <head>; see THEME_STORAGE_KEY.
+  try{ localStorage.setItem(THEME_STORAGE_KEY, t.id+"|"+t.scheme); }catch(e){
+    /* private mode, or blocked third-party storage in an iframe. The switch
+       still works for this visit; it just won't be remembered. */
+  }
+  // Let the PMR wrapper page repaint its own background to match, so a dark
+  // theme doesn't sit in a cream frame. See tellParentTheme().
+  tellParentTheme(t);
+}
+/* The wrapper page is a different origin and cannot read this tool's
+   localStorage, so the tool has to tell it. targetOrigin is "*" on purpose: the
+   payload is a theme id and a hex color — nothing worth protecting — and a
+   specific origin would mean guessing between the www and apex hosts and
+   logging a console error on whichever one is wrong. The wrapper checks that
+   the message came FROM here, which is the check that actually matters. */
+function tellParentTheme(t){
+  if(window.parent===window) return;   // opened directly, not embedded
+  try{ window.parent.postMessage({type:"pmr-theme", id:t.id, paper:t.paper}, "*"); }catch(e){}
+}
+function savedTheme(){
+  try{
+    const id=String(localStorage.getItem(THEME_STORAGE_KEY)||"").split("|")[0];
+    return THEMES.some(t=>t.id===id) ? id : DEFAULT_THEME;
+  }catch(e){ return DEFAULT_THEME; }
+}
+function buildThemeSwitch(){
+  const el=document.getElementById("themeSwitch");
+  el.innerHTML=THEMES.map(t=>
+    `<button type="button" class="themebtn" data-theme="${esc(t.id)}" aria-pressed="false" title="${esc(t.label)} color scheme">`+
+      `<span class="themeswatch" style="background:linear-gradient(135deg,${esc(t.swatch)} 50%,${esc(t.swatch2)} 50%)"></span>`+
+      `<span class="themebtn-label">${esc(t.label)}</span>`+
+    `</button>`
+  ).join("");
+  el.querySelectorAll(".themebtn").forEach(b=>{
+    b.addEventListener("click",()=>applyTheme(b.dataset.theme));
+  });
 }
 function buildTierFilters(){
   const el=document.getElementById("tierFilter");
@@ -739,16 +1207,23 @@ function buildTabsAndPanels(){
   bar.innerHTML = TABS.map(t=>`<button class="tabbtn" id="tabbtn-${t.id}" role="tab" aria-pressed="${t.id===activeTab}">${esc(t.label)}</button>`).join("");
   panels.innerHTML = TABS.map(t=>`<div class="panel" id="p-${t.id}" data-active="${t.id===activeTab}"></div>`).join("");
   TABS.forEach(t=>{
-    document.getElementById("tabbtn-"+t.id).addEventListener("click",()=>{
-      activeTab=t.id;
-      TABS.forEach(o=>{
-        document.getElementById("tabbtn-"+o.id).setAttribute("aria-pressed", o.id===t.id);
-        document.getElementById("p-"+o.id).setAttribute("data-active", o.id===t.id);
-      });
-      setRangesControl(t);
-      renderActiveTab();
-    });
+    document.getElementById("tabbtn-"+t.id).addEventListener("click",()=>setActiveTab(t.id));
   });
+}
+// One path in and out of a tab, shared by the buttons and by a deep link, so a
+// tab opened from a URL is in exactly the same state as one opened by a click —
+// including the share href, which is how the NEXT person gets the same view.
+function setActiveTab(id){
+  const t=TABS.find(x=>x.id===id);
+  if(!t || t.id===activeTab) return;
+  activeTab=t.id;
+  TABS.forEach(o=>{
+    document.getElementById("tabbtn-"+o.id).setAttribute("aria-pressed", o.id===t.id);
+    document.getElementById("p-"+o.id).setAttribute("data-active", o.id===t.id);
+  });
+  setRangesControl(t);
+  syncShareHref();
+  renderActiveTab();
 }
 // Only the ranges control is per-tab now. Driven from the registry in BOTH the
 // click handler and init() — it used to be set only on click, so the first tab
@@ -764,6 +1239,109 @@ function wireFilters(){
     filterShowRanges=e.target.checked; renderActiveTab();
   });
 }
+/* ── Share ────────────────────────────────────────────────────────────────
+   Three paths, tried in order, because an iframe can have any of them taken
+   away from it:
+     1. navigator.share — the native sheet. In a CROSS-ORIGIN frame this needs
+        allow="web-share" on the <iframe>; the PMR wrapper sets it, a Pinkbike
+        embed does not, so there it rejects and falls through.
+     2. navigator.clipboard — same story, needs allow="clipboard-write".
+     3. document.execCommand("copy") — the old way. No permission policy, runs
+        off the click's own transient activation. That is why it is still here.
+   Dismissing the native sheet is a DECISION, not a failure: AbortError stops
+   rather than "helpfully" copying a link the person just declined to send.
+   If all three are gone, say so plainly instead of flashing a false "copied" —
+   the button is a real <a> with a real href, so long-press still works.
+   ========================================================================= */
+const SHARE_FLASH_MS=1900;      // how long the status pill stays up after a copy
+
+// The share target is the canonical PMR page plus the tab in view, so a link
+// handed to somebody opens on what its sender was actually looking at. The
+// first tab is the default view and carries NO hash — a clean URL is a better
+// thing to paste than one ending in "#bysite".
+function shareUrl(){
+  return SHARE_URL + (activeTab===TABS[0].id ? "" : "#"+activeTab);
+}
+function syncShareHref(){
+  document.getElementById("shareBtn").setAttribute("href", shareUrl());
+}
+let shareFlashTimer=null;
+function flashShare(msg, copied){
+  const wrap=document.getElementById("shareWrap");
+  const ico=wrap.querySelector(".ico-share"), chk=wrap.querySelector(".ico-check");
+  document.getElementById("shareStatus").textContent=msg;
+  wrap.classList.add("flash");
+  ico.hidden=!!copied; chk.hidden=!copied;
+  clearTimeout(shareFlashTimer);
+  shareFlashTimer=setTimeout(()=>{
+    wrap.classList.remove("flash");
+    document.getElementById("shareStatus").textContent="";
+    ico.hidden=false; chk.hidden=true;
+  }, SHARE_FLASH_MS);
+}
+function copyLink(url){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url)
+      .then(()=>flashShare("Link copied", true))
+      .catch(()=>legacyCopy(url));
+  } else {
+    legacyCopy(url);
+  }
+}
+function legacyCopy(url){
+  const ta=document.createElement("textarea");
+  ta.value=url; ta.setAttribute("readonly","");
+  ta.style.position="fixed"; ta.style.top="0"; ta.style.opacity="0";
+  document.body.appendChild(ta);
+  ta.select(); ta.setSelectionRange(0, url.length);
+  let ok=false;
+  try{ ok=document.execCommand("copy"); }catch(e){ ok=false; }
+  document.body.removeChild(ta);
+  flashShare(ok ? "Link copied" : "Long-press to copy", ok);
+}
+function wireShare(){
+  syncShareHref();
+  document.getElementById("shareBtn").addEventListener("click",e=>{
+    e.preventDefault();
+    const url=shareUrl();
+    if(navigator.share){
+      navigator.share({title:SHARE_TITLE, url}).catch(err=>{
+        if(err && err.name==="AbortError") return;
+        copyLink(url);
+      });
+    } else {
+      copyLink(url);
+    }
+  });
+}
+
+/* ── Deep links ───────────────────────────────────────────────────────────
+   Two ways a tab can be asked for from outside, because a cross-origin frame
+   cannot read the address bar above it at all:
+     · the PMR wrapper appends the outer page's hash onto the iframe src, so
+       postmillenniumrenaissance.com/studies/#sources arrives here as this
+       document's own location.hash at load;
+     · the same wrapper posts a message on any LATER hash change, which that
+       src-append cannot cover once the frame has already loaded.
+   An unknown or absent hash is not an error — it leaves the default tab, which
+   is exactly what a Pinkbike embed gets, since no message from that page will
+   ever clear PMR_ORIGINS.
+   ========================================================================= */
+function tabFromHash(hash){
+  const id=String(hash||"").replace(/^#/,"").trim().toLowerCase();
+  return TABS.some(t=>t.id===id) ? id : null;
+}
+function applyHash(hash){
+  const id=tabFromHash(hash);
+  if(id) setActiveTab(id);
+}
+window.addEventListener("hashchange",()=>applyHash(location.hash));
+window.addEventListener("message",e=>{
+  if(!PMR_ORIGINS.includes(e.origin)) return;              // check the ORIGIN first, always
+  if(!e.data || e.data.type!=="pmr-hash" || typeof e.data.hash!=="string") return;
+  applyHash(e.data.hash);
+});
+
 // Redraw the Range tab's SVG on resize/orientation-change, debounced —
 // its viewBox is measured from the container's actual pixel width (see
 // renderRange), so a stale render after a resize would misalign text and
@@ -776,12 +1354,21 @@ window.addEventListener("resize",()=>{
 });
 
 function init(){
-  applyTheme(DEFAULT_THEME);
+  // Resolve a deep link BEFORE anything is built, so the requested tab paints
+  // once rather than rendering the default and then immediately replacing it.
+  const hashTab=tabFromHash(location.hash);
+  if(hashTab) activeTab=hashTab;
+  // The href is already in the markup so the link works with no script at all;
+  // this makes the data block the single source of truth once one is running.
+  document.querySelector(".pmr-link").setAttribute("href", PMR_HOME_URL);
+  buildThemeSwitch();          // must exist before applyTheme sets aria-pressed on it
+  applyTheme(savedTheme());
   buildLegendTop();
   buildTierFilters();
   buildTabsAndPanels();
   setRangesControl(TABS.find(t=>t.id===activeTab));
   wireFilters();
+  wireShare();
   renderActiveTab();
 }
 init();

@@ -3,8 +3,12 @@
 What non-local and local mountain bikers actually spend at trail systems — compiled
 from published economic-impact studies, shown exactly as each source reported it.
 
-**Live:** https://postmillennium-mtb.github.io/studies/
-**On PMR:** https://postmillenniumrenaissance.com/spending-ledger/
+**On PMR (canonical):** https://www.postmillenniumrenaissance.com/studies/
+**Served from:** https://postmillennium-mtb.github.io/studies/
+
+The PMR address is the one to share. github.io is the origin this file is served
+from; the PMR page is what `<link rel="canonical">`, `og:url` and the tool's own
+Share button all point at.
 
 ## What this tool does
 
@@ -27,9 +31,33 @@ smoothing over the three things that make them hard to compare:
 | **Show reported ranges** | Draws the high bound where a source gave a range instead of one number |
 | **By Site** tab | Paired non-local / local bars, one row per site, shared linear $ axis |
 | **Range (all studies)** tab | Log-scale strip plot of every reported figure |
-| **Sources & Methodology** tab | Tier definitions, full citation table, deliberate exclusions |
+| **Sources & Methodology** tab | Tier definitions, the citation table, deliberate exclusions |
+| **Theme switch** (top right) | Two palettes: **Ledger** (cream, the default) and **Neon** (1990s blacklight). Remembered per browser; the tool works fine if that storage is blocked |
+| **Share** (top right) | Copies or hands off the **PMR** URL, with the tab you are on appended |
+| **← PMR** (top left) | Back to the site. `target="_top"`, so it escapes the embed |
 
 Hover or tap any bar or dot for the full citation and caveat.
+
+The source table carries both cohorts as their own columns — **Non-local /
+out-of-town** and **Local / resident** — with the same swatch, unit badge and
+"not reported" wording the charts use, so nothing about which figure is whose
+depends on having read the chart first. On a phone each study stacks into a
+labelled card instead of a six-column table, which reads better and is also the
+only layout that doesn't pan the page sideways (see `CLAUDE.md`).
+
+### Deep links
+
+Every tab has its own address, and the Share button builds it for you:
+
+| Link | Opens on |
+|---|---|
+| `…/studies/` | By Site |
+| `…/studies/#range` | Range (all studies) |
+| `…/studies/#sources` | Sources & Methodology |
+
+These work through the PMR wrapper page, which forwards the hash into the frame
+on load and posts later changes across. In a Pinkbike embed there is no such
+bridge and the tool simply opens on its default tab.
 
 ## Reading the bars
 
@@ -72,6 +100,25 @@ numbers, the field is left empty rather than estimated.
   Manti-La Sal → 2022, Bentonville → 2023). If any of those were deliberately recording
   a *survey* year, the fix is a separate `surveyYr` field, not a change to `yr`.
 
+## Held out of the charts — other currencies
+
+Studies reported in a currency other than USD are read, tiered and listed in the
+Sources tab, but **not plotted**. Both charts share one dollar axis, and a figure
+in another currency drawn on it reads as directly comparable when it isn't.
+
+Currently one: **Nelson–Tasman, NZ** (BERL 2018 for Nelson City Council).
+NZ$150/day non-local, no resident figure, tiered **Low**. That tier is the whole
+story — the NZ$150 is an analyst assumption stated three times in the report and
+never sourced, it is per *visitor* where the visitor count adds a non-riding
+partner for every other rider, and the "retained expenditure" that looks like a
+local figure is the same assumption applied to residents travelling *out* of the
+region. It is a good worked example of what a headline "$17.1 million economic
+impact" is actually built on.
+
+A normalized-currency view is the plan once there are a few more. It needs an
+exchange-rate table, and a rate is only honest if the screen says which one and
+as of when — year-of-study and present-day rates answer different questions.
+
 ## Excluded on purpose
 
 Named in the Sources tab, with reasons: Marquette MI (qualitative, no spending survey),
@@ -101,12 +148,16 @@ For reference, the median of the MTB-specific *per-day* non-local figures here i
 ```
 index.html              the tool — single file, zero dependencies, opens by double-click
 README.md               this file
+CLAUDE.md               conventions and traps for anyone (or anything) editing index.html
 favicon.ico             \
 favicon-32x32.png        }  referenced relatively; served from a github.io subpath
 apple-touch-icon.png    /
 ```
 
 ## Working with Claude on this file
+
+Read `CLAUDE.md` first — it has the conventions, the one-line edit paths, and the
+list of comments in `index.html` that are recorded traps rather than decoration.
 
 To add sites: paste the current `index.html` into a new chat along with your candidate
 studies, and ask for entries following the same sourcing discipline as the existing
