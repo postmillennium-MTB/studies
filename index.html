@@ -632,19 +632,19 @@ function renderSources(container){
       <div style="display:flex;flex-direction:column;gap:6px">${tierRows}</div>
     </div>
     <div class="srcnote">
+      <h3>Full source table</h3>
+      <div style="overflow-x:auto"><table class="srctable">
+        <tr><th>Site</th><th>Tier</th><th>Source</th><th>Note</th></tr>
+        ${srcRows}
+      </table></div>
+    </div>
+    <div class="srcnote">
       <h3>Why units aren't normalized</h3>
       <p style="margin:0">Every figure is shown exactly as its source reported it — per day, per night, per trip, or per visit — rather than converted to one common unit. Forcing everything into "per day" would require assuming an average trip length for studies that didn't report one, which would quietly manufacture precision the sources don't have. Where a conversion IS shown (marked <span class="calcflag">calc</span>), the arithmetic is stated in the note, using only numbers the source itself printed.</p>
     </div>
     <div class="srcnote">
       <h3>Excluded — no usable day/trip figure found</h3>
       <ul class="excludelist">${exclusionRows}</ul>
-    </div>
-    <div class="srcnote">
-      <h3>Full source table</h3>
-      <div style="overflow-x:auto"><table class="srctable">
-        <tr><th>Site</th><th>Tier</th><th>Source</th><th>Note</th></tr>
-        ${srcRows}
-      </table></div>
     </div>
   `;
 }
