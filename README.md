@@ -3,8 +3,12 @@
 What non-local and local mountain bikers actually spend at trail systems — compiled
 from published economic-impact studies, shown exactly as each source reported it.
 
-**Live:** https://postmillennium-mtb.github.io/studies/
-**On PMR:** https://postmillenniumrenaissance.com/spending-ledger/
+**On PMR (canonical):** https://www.postmillenniumrenaissance.com/studies/
+**Served from:** https://postmillennium-mtb.github.io/studies/
+
+The PMR address is the one to share. github.io is the origin this file is served
+from; the PMR page is what `<link rel="canonical">`, `og:url` and the tool's own
+Share button all point at.
 
 ## What this tool does
 
@@ -27,9 +31,31 @@ smoothing over the three things that make them hard to compare:
 | **Show reported ranges** | Draws the high bound where a source gave a range instead of one number |
 | **By Site** tab | Paired non-local / local bars, one row per site, shared linear $ axis |
 | **Range (all studies)** tab | Log-scale strip plot of every reported figure |
-| **Sources & Methodology** tab | Tier definitions, full citation table, deliberate exclusions |
+| **Sources & Methodology** tab | Tier definitions, the citation table, deliberate exclusions |
+| **Theme switch** (top right) | Two palettes: **Ledger** (cream, the default) and **Neon** (1990s blacklight). Remembered per browser; the tool works fine if that storage is blocked |
+| **Share** (top right) | Copies or hands off the **PMR** URL, with the tab you are on appended |
+| **← PMR** (top left) | Back to the site. `target="_top"`, so it escapes the embed |
 
 Hover or tap any bar or dot for the full citation and caveat.
+
+The source table carries both cohorts as their own columns — **Non-local /
+out-of-town** and **Local / resident** — with the same swatch, unit badge and
+"not reported" wording the charts use, so nothing about which figure is whose
+depends on having read the chart first.
+
+### Deep links
+
+Every tab has its own address, and the Share button builds it for you:
+
+| Link | Opens on |
+|---|---|
+| `…/studies/` | By Site |
+| `…/studies/#range` | Range (all studies) |
+| `…/studies/#sources` | Sources & Methodology |
+
+These work through the PMR wrapper page, which forwards the hash into the frame
+on load and posts later changes across. In a Pinkbike embed there is no such
+bridge and the tool simply opens on its default tab.
 
 ## Reading the bars
 
@@ -101,12 +127,16 @@ For reference, the median of the MTB-specific *per-day* non-local figures here i
 ```
 index.html              the tool — single file, zero dependencies, opens by double-click
 README.md               this file
+CLAUDE.md               conventions and traps for anyone (or anything) editing index.html
 favicon.ico             \
 favicon-32x32.png        }  referenced relatively; served from a github.io subpath
 apple-touch-icon.png    /
 ```
 
 ## Working with Claude on this file
+
+Read `CLAUDE.md` first — it has the conventions, the one-line edit paths, and the
+list of comments in `index.html` that are recorded traps rather than decoration.
 
 To add sites: paste the current `index.html` into a new chat along with your candidate
 studies, and ask for entries following the same sourcing discipline as the existing
