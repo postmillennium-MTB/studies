@@ -3,7 +3,7 @@
 What non-local and local mountain bikers actually spend at trail systems — compiled
 from published economic-impact studies, shown exactly as each source reported it.
 
-**Live:** https://postmillennium-mtb.github.io/Studies/
+**Live:** https://postmillennium-mtb.github.io/studies/
 **On PMR:** https://postmillenniumrenaissance.com/spending-ledger/
 
 ## What this tool does
