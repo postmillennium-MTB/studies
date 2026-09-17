@@ -41,7 +41,9 @@ Hover or tap any bar or dot for the full citation and caveat.
 The source table carries both cohorts as their own columns — **Non-local /
 out-of-town** and **Local / resident** — with the same swatch, unit badge and
 "not reported" wording the charts use, so nothing about which figure is whose
-depends on having read the chart first.
+depends on having read the chart first. On a phone each study stacks into a
+labelled card instead of a six-column table, which reads better and is also the
+only layout that doesn't pan the page sideways (see `CLAUDE.md`).
 
 ### Deep links
 
@@ -97,6 +99,25 @@ numbers, the field is left empty rather than estimated.
   citation beside them and were corrected to the cited year (WVU ×2 → 2019,
   Manti-La Sal → 2022, Bentonville → 2023). If any of those were deliberately recording
   a *survey* year, the fix is a separate `surveyYr` field, not a change to `yr`.
+
+## Held out of the charts — other currencies
+
+Studies reported in a currency other than USD are read, tiered and listed in the
+Sources tab, but **not plotted**. Both charts share one dollar axis, and a figure
+in another currency drawn on it reads as directly comparable when it isn't.
+
+Currently one: **Nelson–Tasman, NZ** (BERL 2018 for Nelson City Council).
+NZ$150/day non-local, no resident figure, tiered **Low**. That tier is the whole
+story — the NZ$150 is an analyst assumption stated three times in the report and
+never sourced, it is per *visitor* where the visitor count adds a non-riding
+partner for every other rider, and the "retained expenditure" that looks like a
+local figure is the same assumption applied to residents travelling *out* of the
+region. It is a good worked example of what a headline "$17.1 million economic
+impact" is actually built on.
+
+A normalized-currency view is the plan once there are a few more. It needs an
+exchange-rate table, and a rate is only honest if the screen says which one and
+as of when — year-of-study and present-day rates answer different questions.
 
 ## Excluded on purpose
 

@@ -24,6 +24,8 @@
     · SITES ....................... the big array — every study/site is one line
     · CONF_META ................... confidence tier -> label, color, description
     · UNIT_META ................... reporting unit (day/night/trip/visit) -> label
+    · FOREIGN_SITES ............... non-USD studies, read and tiered but held
+                                     out of the charts — see that array's comment
     · SHARE + HOME ................ the canonical PMR addresses this tool hands
                                      out, and the origins allowed to talk to it
     · THEMES registry ............. color themes — add one line to add one
@@ -400,14 +402,45 @@ a{color:var(--accent)}
 /* ── Sources tab ──────────────────────────────────────────────────────────── */
 .srcnote{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:.85rem;line-height:1.5;box-shadow:var(--card-glow)}
 .srcnote h3{margin:0 0 6px;font-size:.94rem}
-.srctable{width:100%;min-width:720px;border-collapse:collapse;font-size:.78rem}
-.srctable th,.srctable td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
-.srctable th{color:var(--ink-soft);font-size:.7rem;text-transform:uppercase;letter-spacing:.03em}
+/* ── Source tables ────────────────────────────────────────────────────────
+   Mobile-first, and here that is not a stylistic preference — it is the fix for
+   a real bug. Six columns of citation text have an intrinsic width of ~628px.
+   A table that wide inside overflow-x:auto does NOT stay inside it: Chromium
+   propagates the table's intrinsic width up to the root scroller, and the whole
+   page pans sideways by 166px on a 360px phone. Everything obvious was tried
+   and none of it works — max-width:100% on the wrapper, overflow:hidden on the
+   card, grid-template-columns:minmax(0,1fr) on the ancestors, contain. The two
+   that do move the number are both worse than the bug: table-layout:fixed gives
+   six 50px columns, and overflow-x:hidden on <html> only blocks the USER from
+   panning (window.scrollTo still moves it) and is unreliable on iOS.
+   Beware the probe, too: document.body.scrollWidth stays at 360 and reports no
+   problem. Only window.scrollX after an attempted scroll catches this.
+   So the phone doesn't get a table at all. Each study stacks into a card with
+   its field names on the cells (data-label, set in renderSources), which is
+   better to read on a phone than a six-column sideways scroller anyway. The
+   table comes back at 640px in the min-width block below. ─────────────────── */
+.srctable{width:100%;border-collapse:collapse;font-size:.78rem}
+.srctable tr{display:block;border-bottom:1px solid var(--line);padding:9px 0}
+.srctable tr:last-child{border-bottom:none}
+.srctable tr:first-child{display:none}   /* header row — its labels move onto the cells */
+/* flex-wrap matters: without it the 96px label and the cell's min-content sit
+   side by side and set a floor the card can't go under, which pans the page on
+   a 320px screen. Wrapping lets a long value drop below its own label instead. */
+.srctable td{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;border:none;padding:2px 0;text-align:left}
+.srctable td::before{
+  content:attr(data-label);flex:0 0 96px;
+  color:var(--ink-soft);font-size:.66rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.03em;
+}
+/* The site name is the card's heading, not another labelled field. */
+.srctable td.srccell-site{display:block;font-weight:700;font-size:.86rem;margin-bottom:5px}
+.srctable td.srccell-site::before{content:none}
+.srctable th{text-align:left;padding:7px 6px;color:var(--ink-soft);font-size:.7rem;text-transform:uppercase;letter-spacing:.03em;vertical-align:top}
 /* The two spending columns. The swatch in the header is the same one the legend
    and the bars use, so the table reads as the same data rather than a second,
    unrelated list — but the column HEADING carries the words, never the color. */
 .srctable th .swatch{vertical-align:-2px;margin-right:5px}
-.srcval{white-space:nowrap;font-weight:700}
+.srcval{font-weight:700}
 .excludelist{font-size:.82rem;line-height:1.6}
 .srccount{font-weight:400;color:var(--ink-soft);font-size:.82em}
 .srclink{color:var(--accent);text-decoration:none;font-weight:600}
@@ -430,6 +463,15 @@ footer a:hover{text-decoration:underline}
 @media(min-width:640px){
   .pmr-full{display:inline}
   .pmr-short{display:none}
+  /* Back to a real table once there is room for one. See the bug note above
+     for why the phone doesn't get this. */
+  .srctable tr,.srctable tr:first-child{display:table-row;border-bottom:none;padding:0}
+  .srctable td{display:table-cell;border-bottom:1px solid var(--line);padding:7px 6px;vertical-align:top}
+  .srctable td::before{content:none}
+  .srctable td.srccell-site{display:table-cell;font-weight:400;font-size:inherit;margin-bottom:0}
+  /* Keeps "$138.49 /day" on one line in a column. On the phone's stacked layout
+     it instead sets a min-content floor that pans the page — see the note above. */
+  .srcval{white-space:nowrap}
   .masthead h1{font-size:1.6rem}
   .barlabel{width:78px;font-size:.76rem}
   .siterow-name{font-size:.94rem}
@@ -596,6 +638,31 @@ const UNIT_META={day:"/day",night:"/night",trip:"/trip",visit:"/visit"};
 const ORIG_LINK_ICON=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
 const SRC_LINK_ICON=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg>`;
 
+/* ==== FOREIGN_SITES — non-USD studies, HELD OUT of the charts on purpose. ====
+   Same field contract as SITES, plus two:
+     cur     ISO code of the currency the source reported in
+     curSym  how that currency prints, e.g. "NZ$"
+
+   Nothing reads this array except renderSources(). These rows are deliberately
+   NOT in SITES, because both charts share one dollar axis: NZ$150 would draw a
+   slightly longer bar than Coldwater's US$138.49 and read as the larger figure.
+   That is a different failure from the cross-UNIT tension the tool already
+   accepts and warns about. A reader seeing "/day" next to "/trip" knows the
+   comparison is loose; a reader seeing two bare dollar bars assumes the currency
+   was handled, because converting currency is trivial in a way that converting
+   "per trip" into "per day" is not.
+
+   TO TURN ON A NORMALIZED-CURRENCY VIEW: add a toggle, and add an FX table. The
+   table is the whole job, and it is not one number — "normalized" means nothing
+   until the screen says WHICH rate and AS OF WHEN. Year-of-study rate and
+   today's rate give materially different answers and answer different
+   questions; whichever is chosen has to be shown, not assumed. Until then these
+   rows print in their own currency and are compared to nothing.
+   ============================================================================ */
+const FOREIGN_SITES=[
+{id:"nelson-nz",site:"Nelson–Tasman MTB Trails",st:"Nelson, NZ",yr:2018,mtb:"y",unit:"day",cur:"NZD",curSym:"NZ$",nl:150,lo:null,conf:"l",calc:false,src:"Cox, Drew & Dixon 2018 (BERL) for Nelson City Council, pp.2, 9, 11",url:"https://www.nelson.govt.nz/repository/libraries/id:2r883m1me1cxbyryo0mp/hierarchy/5Community/Recreation/Mountain%20Biking%20in%20Whakat%C5%AB%20Nelson/BERL-Economic-benefits-of-Mountain-Biking-for-Nelson-Final-report-13Feb2018.pdf",archiveUrl:null,note:"The NZ$150/day is an ASSUMPTION, not a measurement. It appears three times (pp.11, 18) and is never sourced — the report gives only a rationale for adjusting it downward (\u201Callowing for the fact that a good number of visitors will be staying with friends and relatives\u201D). It is also per VISITOR, and the visitor count adds one non-riding partner for every other rider (43,875 visitors from 29,250 riders, p.11), so the denominator is party members, not riders. The 2.5 nights it multiplies is the Commercial Accommodation Monitor average for ALL visitors to the region, not for mountain bikers. Method was interviews with local MTB groups and commercial operators (p.2), not a rider survey; BERL\u2019s own recommendation (p.ii) is that the council commission one to establish \u201Clocal vs visitor use, frequency of use, visitor spend and length of stay\u201D. NO RESIDENT FIGURE: the NZ$0.6m \u201Cretained expenditure\u201D is this same NZ$150 assumption applied to a counterfactual \u2014 10% of local riders taking one 2.5-night trip OUTSIDE the region if Nelson had no MTB. That is displaced spending elsewhere, not resident spending at the trails, and is not the same quantity as the Local column. Data year 2017; yr is the publication year."},
+];
+
 /* ==== SHARE + HOME — where this tool actually lives. ========================
    This file is SERVED from postmillennium-mtb.github.io. That is an origin, not
    an address to hand anybody: the PMR page is the one with the site chrome, the
@@ -733,6 +800,13 @@ function fmtValue(s,key,withHi){
   const val=s[key], hi=s[key+"Hi"];
   if(val==null) return null;
   return (withHi && hi!=null) ? `${fmtMoney(val)}–${fmtMoney(hi)}` : fmtMoney(val);
+}
+// Same string fmtValue builds, with the row's own currency mark swapped in for
+// the bare "$". A NZ figure must never be able to read as USD — that is the
+// whole reason FOREIGN_SITES is held apart from SITES.
+function fmtForeign(s,key){
+  const v=fmtValue(s,key,true);
+  return v==null ? null : v.split("$").join(s.curSym);
 }
 function tierBadge(tier){
   // Never throw on a bad `conf` — see CONF_FALLBACK in the data block for why.
@@ -941,15 +1015,16 @@ function rangeDotSvg(s,which,val,x,y,color,isHiEnd){
 // the visitor's and which was the resident's. These two columns are that answer,
 // and they carry the same swatch, unit badge and "not reported" wording as the
 // charts so the two views read as one dataset.
-function srcValueCell(s,key){
+function srcValueCell(s,key,label){
   // ALWAYS prints the full reported range, unlike the bars. The "Show reported
   // ranges" control is hidden on this tab (TABS[].ranges), so a viewer who
   // switched it off on a chart would otherwise be shown bare low bounds here
   // with no visible control to turn them back on.
   const v=fmtValue(s,key,true);
-  if(v==null) return `<td><span class="nodata">not reported</span></td>`;
+  const at=`data-label="${esc(label)}"`;
+  if(v==null) return `<td ${at}><span class="nodata">not reported</span></td>`;
   const calc=s.calc?' <span class="calcflag" title="Claude-assisted calculation — see the note">calc</span>':'';
-  return `<td class="srcval">${v}<span class="unitbadge">${UNIT_META[s.unit]}</span>${calc}</td>`;
+  return `<td class="srcval" ${at}>${v}<span class="unitbadge">${UNIT_META[s.unit]}</span>${calc}</td>`;
 }
 function renderSources(container){
   let tierRows="";
@@ -961,17 +1036,38 @@ function renderSources(container){
   EXCLUSIONS.forEach(x=>{
     exclusionRows+=`<li><b>${esc(x.what)}</b> (${linkedText(x,x.cite)}) — ${esc(x.why)}</li>`;
   });
+  // Held rows ignore every filter: they are a short, fixed list that exists to be
+  // read, not a dataset to slice. Values print in their own currency.
+  let foreignRows="";
+  FOREIGN_SITES.forEach(s=>{
+    const cell=(k,label)=>{
+      const v=fmtForeign(s,k), at=`data-label="${esc(label)}"`;
+      return v==null
+        ? `<td ${at}><span class="nodata">not reported</span></td>`
+        : `<td class="srcval" ${at}>${esc(v)}<span class="unitbadge">${UNIT_META[s.unit]}</span><span class="unitbadge">${esc(s.cur)}</span></td>`;
+    };
+    foreignRows+=`<tr>
+      <td class="srccell-site">${esc(s.site)} (${esc(s.st)}, ${s.yr})</td>
+      ${cell("nl","Non-local")}
+      ${cell("lo","Local")}
+      <td data-label="Confidence">${tierBadge(s.conf)}</td>
+      <td data-label="Source">${srcCell(s)}</td>
+      <td data-label="Note">${esc(s.note||"")}</td>
+    </tr>`;
+  });
   let srcRows="";
   const srcSites=visibleSites();
-  if(!srcSites.length) srcRows=`<tr><td colspan="6" class="nodata">No studies match the current filters.</td></tr>`;
+  if(!srcSites.length) srcRows=`<tr><td colspan="6" class="nodata srccell-site">No studies match the current filters.</td></tr>`;
   srcSites.forEach(s=>{
+    // data-label is what the phone layout prints in place of the column heading
+    // it doesn't have — see the CSS note on .srctable.
     srcRows+=`<tr>
-      <td>${esc(s.site)} (${esc(s.st)}, ${s.yr})${s.mtb==='n'?' <em>— not MTB-specific</em>':''}</td>
-      ${srcValueCell(s,"nl")}
-      ${srcValueCell(s,"lo")}
-      <td>${tierBadge(s.conf)}</td>
-      <td>${srcCell(s)}</td>
-      <td>${esc(s.note||"")}</td>
+      <td class="srccell-site">${esc(s.site)} (${esc(s.st)}, ${s.yr})${s.mtb==='n'?' <em>— not MTB-specific</em>':''}</td>
+      ${srcValueCell(s,"nl","Non-local")}
+      ${srcValueCell(s,"lo","Local")}
+      <td data-label="Confidence">${tierBadge(s.conf)}</td>
+      <td data-label="Source">${srcCell(s)}</td>
+      <td data-label="Note">${esc(s.note||"")}</td>
     </tr>`;
   });
   container.innerHTML=`
@@ -998,6 +1094,23 @@ function renderSources(container){
     <div class="srcnote">
       <h3>Excluded — no usable day/trip figure found</h3>
       <ul class="excludelist">${exclusionRows}</ul>
+    </div>
+    <div class="srcnote">
+      <h3>Held out of the charts — reported in another currency <span class="srccount">— ${FOREIGN_SITES.length} ${FOREIGN_SITES.length===1?"study":"studies"}</span></h3>
+      <p style="margin:0 0 10px">Read, tiered and recorded, but not plotted. Both charts share one dollar
+      axis, and a figure in another currency drawn on it would read as directly comparable when it is not.
+      These print in the currency their source used, compared to nothing. A normalized view needs an exchange
+      rate, and a rate is only honest if the screen says which one and as of when — so that is a deliberate
+      gap, not an oversight.</p>
+      <div style="overflow-x:auto"><table class="srctable">
+        <tr>
+          <th>Site</th>
+          <th><span class="swatch" style="background:var(--nonlocal)"></span>Non-local / out-of-town</th>
+          <th><span class="swatch" style="background:var(--local)"></span>Local / resident</th>
+          <th>Confidence</th><th>Source</th><th>Note</th>
+        </tr>
+        ${foreignRows}
+      </table></div>
     </div>
   `;
 }

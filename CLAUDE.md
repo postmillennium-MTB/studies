@@ -52,8 +52,8 @@ permission policy and the postMessage bridge follows from that.
   masthead, tab bar, filter bar, panels — mostly empty shells that JS fills
   <script>
     ==== one contiguous DATA block ====
-    SITES · CONF_META · UNIT_META · link icons · SHARE/HOME URLs · PMR_ORIGINS
-    EXCLUSIONS · THEMES · TABS
+    SITES · CONF_META · UNIT_META · link icons · FOREIGN_SITES
+    SHARE/HOME URLs · PMR_ORIGINS · EXCLUSIONS · THEMES · TABS
     /* ===== END OF DATA — everything below is logic ===== */
     tuning constants, render functions, theme, share, deep links, init()
 ```
@@ -67,12 +67,13 @@ splitting CSS or JS out. The single file is the point.
 palettes, tab definitions — lives in that block. Logic lives below it. A label typed
 inline in a render function, or a threshold living inside an `if`, is a bug.
 
-**Anything repeating is a registry.** `SITES`, `EXCLUSIONS`, `CONF_META`, `UNIT_META`,
-`THEMES`, `TABS`. Adding one of a thing should be one line:
+**Anything repeating is a registry.** `SITES`, `FOREIGN_SITES`, `EXCLUSIONS`,
+`CONF_META`, `UNIT_META`, `THEMES`, `TABS`. Adding one of a thing should be one line:
 
 | To add | Do |
 |---|---|
 | a site | one entry in `SITES` |
+| a non-USD study | one entry in `FOREIGN_SITES` — same field contract plus `cur` and `curSym`. It lists in the Sources tab and is held out of both charts. Read that array's comment before wiring up a normalized-currency view |
 | a tab | write the render function, add one line to `TABS` (it becomes shareable at `/studies/#<id>` for free) |
 | a theme | one entry in `THEMES` + one CSS `[data-theme="…"]` block. Nothing else — not even the pre-paint shim |
 | an exclusion | one entry in `EXCLUSIONS` |
@@ -100,9 +101,12 @@ This tool's entire value is that it does not inflate certainty.
   has been questioned once already.
 - **Units are not normalized, and neither is currency.** Forcing everything to "per
   day" would require inventing an average trip length for studies that never reported
-  one. Same objection applies to converting a foreign-currency figure at some chosen
-  rate — if a non-USD study is ever added, it needs a disclosed currency badge, not
-  a conversion.
+  one. Non-USD studies go in `FOREIGN_SITES` and are held out of both charts: the
+  charts share one dollar axis, and a figure in another currency drawn on it reads as
+  directly comparable when it is not. A normalized view is wanted eventually, and it
+  needs an FX table — but "normalized" means nothing until the screen says *which*
+  rate and *as of when*. Year-of-study and today's rate answer different questions.
+  Never pick one silently.
 - **"via TPL" rows link the compilation as the primary source and the original study
   as a second, differently-iconed link.** The citation must point where the number
   was actually read. The two documents did not get the same scrutiny and must never
@@ -140,6 +144,17 @@ tidy up reintroduces the bug.
 - **The source table always prints the full reported range,** ignoring
   `filterShowRanges`. That control is hidden on the Sources tab, so a viewer who
   switched it off on a chart would otherwise see bare low bounds with no way back.
+- **Never put a `min-width` on `.srctable`, and never let it grow much past ~460px
+  of intrinsic width on a phone.** A wide `table-layout:auto` table inside
+  `overflow-x:auto` does *not* stay inside it: Chromium propagates the table's
+  intrinsic width to the root scroller and the whole page pans sideways (166px at
+  360px wide, measured). `max-width:100%` on the wrapper, `overflow:hidden` on the
+  card, `grid-template-columns:minmax(0,1fr)`, and `contain` all fail to stop it.
+  `table-layout:fixed` stops it and gives six 50px columns; `overflow-x:hidden` on
+  `<html>` only blocks the *user* from panning and is unreliable on iOS. The fix in
+  place is that phones get stacked cards instead of a table. **And beware the probe:
+  `document.body.scrollWidth` stays at 360 and reports no problem — only
+  `window.scrollX` after an attempted scroll catches this.**
 - **The theme preference is stored as `"id|scheme"`, not just the id.** That is what
   lets the pre-paint shim in `<head>` set both the palette and the light/dark scheme
   without knowing the `THEMES` registry exists. The storage key string is duplicated
@@ -170,7 +185,9 @@ tidy up reintroduces the bug.
 ## Before handing anything back
 
 - Opens correctly by double-clicking the local file
-- Renders at phone width with no horizontal page scroll; touch targets ≥ 40px
+- Renders at phone width with **no horizontal page scroll** — check with
+  `window.scrollTo(9999,0)` then read `window.scrollX`, on every tab, at 320px and
+  360px. `body.scrollWidth` will lie to you. Touch targets ≥ 40px
 - Both themes switch cleanly, and the default paints correctly before JS runs
 - New palette values clear WCAG AA (4.5:1) against both `--paper` and `--card`
 - Home link `target="_top"`; external links `target="_blank" rel="noopener"`
@@ -193,6 +210,13 @@ the sessions that built this could not open external PDFs.
   The original UW–River Falls report is linked, so this is resolvable by reading it.
 - **Manti-La Sal author list.** Cited as "Maples, Rehm & Bradley 2022"; Outdoor
   Alliance names only Maples and Bradley. Unverified.
+- **Nelson–Tasman (BERL 2018) is the one row read against its source document.**
+  It is in `FOREIGN_SITES`, tiered `L`, held out of the charts. Its NZ$150/day is an
+  unsourced analyst assumption, stated three times and never cited; it is per
+  *visitor*, where the visitor count adds a non-riding partner for every other rider;
+  and the report's "retained expenditure" is that same assumption applied to locals
+  travelling *out* of the region, so it is not a resident-spending figure and `lo` is
+  null. If more foreign studies are added, this is the row to model them on.
 - **Zero Wayback snapshots exist.** Every link is a live publisher URL carrying rot
   risk. `archiveUrl` / `origArchiveUrl` are wired and take precedence once populated.
 - **Five rows unlinked:** `pikes-overnight`, `pikes-daytrip`, `central-ohio`,
