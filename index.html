@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<!--
+==================================================================================
+  TRAIL VISITOR SPENDING LEDGER  —  single-file, zero-dependency tool
+  Post Millennium Renaissance  ·  postmillenniumrenaissance.com
+==================================================================================
+
+  FILE MAP  (approximate line numbers — they shift as the file is edited;
+             search the ALL-CAPS section labels below to jump reliably)
+
+  <head> / <style> ............... top of file
+    · THEME PALETTE (CSS) ......... "Ledger" default theme (only one shipped —
+                                     built on a THEMES registry so more can be
+                                     added later, one entry + one CSS block each)
+    · BASE + LAYOUT ............... body, masthead, wrap, tab nav
+    · CHART ELEMENTS .............. bars, dots, unit badges, tooltip, legend
+    · CONTROLS .................... MTB-only toggle, reported-ranges toggle
+
+  <script>
+    ==== ALL DATA LIVES IN ONE CONTIGUOUS BLOCK AT THE TOP ====
+    · SITES ....................... the big array — every study/site is one line
+    · CONF_META ................... confidence tier -> label, color, description
+    · UNIT_META ................... reporting unit (day/night/trip/visit) -> label
+    · THEMES registry ............. color themes — add one line to add one
+    · TABS registry ............... the 3 tabs — add one line to add one
+    · tuning constants ............ bar heights, dot radii, axis padding (named)
+    ==== everything past "END OF DATA" is logic ====
+    · scale helpers ............... $ value -> pixel position, per chart
+    · renderBySite() .............. "By Site" tab: paired local/non-local bars
+    · renderRange() ............... "Range" tab: log-scale strip plot
+    · renderSources() ............. "Sources & Methodology" tab
+    · tooltip wiring, filters, init()
+
+  TO ADD A SITE:      add ONE line to the SITES array. See the legend comment
+                       directly above it for what each field means.
+  TO ADD A TAB:       write your render function, then add ONE line to TABS.
+  TO ADD A THEME:     add ONE line to THEMES + one matching CSS [data-theme] block.
+  TO CHANGE THE DEFAULT THEME: see the specificity note in the CSS THEME section
+                       before touching this — order matters there.
+==================================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<meta name="theme-color" content="#f4ede1"><!-- kept in sync by applyTheme() -->
+<link rel="icon" href="favicon.ico">
+<link rel="icon" type="image/png" href="favicon-32x32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Trail Visitor Spending Ledger — Post Millennium Renaissance</title>
+<meta name="description" content="What out-of-town and local mountain bikers actually spend per day, per night, per trip, or per visit — compiled from 16 published economic-impact studies, tiered by confidence, with every unit and caveat shown, not hidden.">
+<meta property="og:title" content="Trail Visitor Spending Ledger">
+<meta property="og:description" content="Local vs. non-local mountain bike visitor spending, 21 site figures drawn from 16 published studies — confidence-tiered, units disclosed, nothing smoothed over.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://postmillennium-mtb.github.io/Studies/">
+<meta property="og:image" content="https://postmillennium-mtb.github.io/Studies/apple-touch-icon.png">
+<meta name="twitter:image" content="https://postmillennium-mtb.github.io/Studies/apple-touch-icon.png">
+<meta name="twitter:card" content="summary">
+<style>
+/* ==== THEME PALETTE — "Ledger" (default, and only theme shipped this pass). ====
+   Built as a registry from day one (see THEMES in the data block below) so a
+   second/third palette is one CSS block + one line, matching every other PMR
+   tool — nothing here is theme-agnostic that shouldn't be.
+   :root and [data-theme="ledger"] carry IDENTICAL specificity, so whichever is
+   declared last wins on load. Keeping :root as the FIRST block, undecorated,
+   means first paint (before JS runs) already matches this theme. If a second
+   theme is ever added and made default: move the bare :root selector onto its
+   block, move that block above this one, and update the <meta theme-color> tag.
+   ============================================================================ */
+:root{
+  --paper:#f4ede1;       /* page background — warm ledger-paper cream */
+  --ink:#2b2420;         /* primary text */
+  --ink-soft:#5c5148;    /* secondary text */
+  --line:#d8cbb6;        /* hairlines, card borders */
+  --card:#fffaf2;        /* card background, slightly lighter than paper */
+  --accent:#8a5a2b;      /* decorative chrome only — never a data value. tagline,
+                            focus rings, active tab underline, header rule */
+  /* Side colors carry MEANING (non-local vs local) so they stay fixed across
+     any future theme, same as the wheel widget's --a/--b convention. */
+  --nonlocal:#b5482a;    /* rust — non-local / out-of-town spending */
+  --local:#3d6b52;       /* moss — local / resident spending */
+  --nonlocal-soft:#e7c3b6;
+  --local-soft:#c9dcd1;
+  /* Confidence tier colors — see CONF_META in the data block for the wording
+     each color pairs with. Never color alone: every tier also renders a
+     letter badge (V / M / L). */
+  --tier-v:#3d6b52;
+  --tier-m:#a8791f;
+  --tier-l:#a33d2e;
+  --warn-bg:#fbeee7;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent)}
+.wrap{max-width:980px;margin:0 auto;padding:14px 14px 40px}
+
+/* ── Masthead ─────────────────────────────────────────────────────────────── */
+.masthead{border-bottom:3px solid var(--ink);padding:10px 0 12px;margin-bottom:14px}
+.masthead h1{font-size:1.32rem;margin:0 0 4px;line-height:1.2}
+.masthead .tagline{color:var(--ink-soft);font-size:.88rem;margin:0}
+.masthead .accent-rule{height:3px;background:var(--accent);width:56px;margin-top:8px;border-radius:2px}
+
+/* ── Tabs (built from the TABS registry in the script below) ────────────────── */
+.tabbar{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 12px;border-bottom:1px solid var(--line);padding-bottom:0}
+.tabbtn{
+  appearance:none;border:1px solid transparent;background:none;cursor:pointer;
+  font:inherit;font-weight:600;font-size:.86rem;color:var(--ink-soft);
+  padding:9px 12px;min-height:40px;border-radius:8px 8px 0 0;
+}
+.tabbtn[aria-pressed="true"]{color:var(--ink);border-color:var(--line);border-bottom-color:var(--card);background:var(--card)}
+.tabbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel{display:none}
+.panel[data-active="true"]{display:block}
+
+/* ── Filter bar ───────────────────────────────────────────────────────────── */
+.filterbar{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:10px 12px;margin-bottom:14px;font-size:.84rem;
+}
+.filterbar label{display:flex;align-items:center;gap:6px;cursor:pointer;min-height:40px}
+.filterbar input[type="checkbox"]{width:17px;height:17px}
+.filterbar .note{color:var(--ink-soft);font-size:.78rem;flex-basis:100%}
+
+/* ── Legend ───────────────────────────────────────────────────────────────── */
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.78rem;color:var(--ink-soft);margin:2px 0 16px}
+.legend .item{display:flex;align-items:center;gap:6px}
+.swatch{width:13px;height:13px;border-radius:3px;display:inline-block}
+.tierbadge{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;border-radius:4px;font-size:.66rem;font-weight:800;
+  color:#fff;flex:none;
+}
+
+/* ── Site rows (By Site tab) ─────────────────────────────────────────────── */
+.siterow{border-bottom:1px solid var(--line);padding:10px 0}
+.siterow:last-child{border-bottom:none}
+.siterow-head{display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:6px}
+.siterow-name{font-weight:700;font-size:.88rem}
+.siterow-meta{font-size:.74rem;color:var(--ink-soft);white-space:nowrap}
+.bargroup{display:flex;flex-direction:column;gap:5px}
+.barline{display:flex;align-items:center;gap:8px}
+.barlabel{width:64px;flex:none;font-size:.72rem;font-weight:700;text-align:right;color:var(--ink-soft)}
+.bartrack{flex:1;position:relative;height:22px;background:#00000008;border-radius:4px;overflow:visible}
+.barfill{position:absolute;left:0;top:0;height:100%;border-radius:4px;min-width:3px;cursor:pointer}
+.barfill.local{background:var(--local)}
+.barfill.nonlocal{background:var(--nonlocal)}
+.barfill.range{background:repeating-linear-gradient(135deg,var(--nonlocal),var(--nonlocal) 5px,var(--nonlocal-soft) 5px,var(--nonlocal-soft) 10px)}
+.barfill.range.localrange{background:repeating-linear-gradient(135deg,var(--local),var(--local) 5px,var(--local-soft) 5px,var(--local-soft) 10px)}
+/* A reported range draws as TWO segments — solid to the low bound, hatched out to
+   the high bound — so square off the inner corners where they meet. */
+.barfill.rangelow{border-radius:4px 0 0 4px}
+.barfill.rangeext{border-radius:0 4px 4px 0;min-width:0}
+.barval{font-size:.72rem;font-weight:700;color:var(--ink);white-space:nowrap;flex:none}
+.unitbadge{
+  font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em;
+  color:var(--ink-soft);background:#00000010;border-radius:3px;padding:1px 4px;flex:none;
+}
+.calcflag{font-size:.68rem;color:var(--tier-m);font-style:italic}
+.nodata{font-size:.72rem;color:var(--ink-soft);font-style:italic;padding:2px 0}
+
+/* ── Range tab (strip plot) ───────────────────────────────────────────────── */
+.rangewrap{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 10px 8px}
+.rangesvg{display:block;width:100%}
+.rangedot{cursor:pointer}
+.rangecap{font-size:.74rem;color:var(--ink-soft);margin-top:8px}
+
+/* ── Tooltip ──────────────────────────────────────────────────────────────── */
+.tooltip{
+  position:fixed;max-width:270px;background:var(--ink);color:var(--paper);
+  font-size:.76rem;line-height:1.35;padding:9px 11px;border-radius:8px;
+  pointer-events:none;z-index:50;display:none;box-shadow:0 6px 18px #00000030;
+}
+.tooltip b{color:#fff}
+.tooltip .tt-note{color:#d9cdbd;display:block;margin-top:5px}
+
+/* ── Sources tab ──────────────────────────────────────────────────────────── */
+.srcnote{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:.85rem;line-height:1.5}
+.srcnote h3{margin:0 0 6px;font-size:.94rem}
+.srctable{width:100%;border-collapse:collapse;font-size:.78rem}
+.srctable th,.srctable td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.srctable th{color:var(--ink-soft);font-size:.7rem;text-transform:uppercase;letter-spacing:.03em}
+.excludelist{font-size:.82rem;line-height:1.6}
+
+footer{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);font-size:.76rem;color:var(--ink-soft)}
+footer a{color:var(--accent);font-weight:600;text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+/* ── Mobile-first: this block widens things for larger screens ──────────────── */
+@media(min-width:640px){
+  .masthead h1{font-size:1.6rem}
+  .barlabel{width:78px;font-size:.76rem}
+  .siterow-name{font-size:.94rem}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <h1>Trail Visitor Spending Ledger</h1>
+    <p class="tagline">What non-local and local mountain bikers actually spend — 21 site figures compiled from 16 published studies, every unit, every gap, every disagreement between sources shown, not smoothed over.</p>
+    <div class="accent-rule"></div>
+  </div>
+
+  <!-- Tabs and panels are BUILT FROM THE `TABS` REGISTRY in the script below. -->
+  <div class="tabbar" id="tabbar" role="tablist"></div>
+
+  <div class="filterbar" id="filterbar">
+    <label><input type="checkbox" id="mtbOnly" checked> MTB-specific studies only</label>
+    <label><input type="checkbox" id="showRanges" checked> Show reported ranges</label>
+    <span class="note">Bars and dots plot the dollar figure exactly as each study reported it. Studies measure different things — a day, a night, a trip, a whole visit — so a unit badge sits on every value. Don't read two different units as directly comparable; that inconsistency is itself part of the story (see Sources tab).</span>
+  </div>
+
+  <div class="legend" id="legendTop"></div>
+
+  <div id="panels"></div>
+
+  <!-- Tooltip target — one shared element, repositioned per hover/tap. -->
+  <div class="tooltip" id="tooltip" role="tooltip"></div>
+
+  <footer>
+    Compiled by Jon Lontai for Post Millennium Renaissance ·
+    <a href="https://www.postmillenniumrenaissance.com/" target="_top">postmillenniumrenaissance.com</a>
+    · Sourcing discipline: every figure traces to a page number in a named study, or is marked as a Claude-assisted calculation with the arithmetic shown. See the Sources tab for what didn't make the cut and why.
+  </footer>
+
+</div>
+
+<script>
+/* ================================================================================
+   ==== ALL DATA LIVES IN THIS ONE CONTIGUOUS BLOCK — see END OF DATA below ====
+   ================================================================================ */
+
+/* ==== SITES — the single source of truth for every study/site. ================
+   TO ADD A SITE: add ONE entry below. Field legend:
+
+     id      unique key, used for DOM ids and tooltip lookups
+     site    display name of the trail system / region
+     st      state or region abbreviation, shown in parentheses
+     yr      year of study (publication year, not necessarily survey year)
+     mtb     "y" = mountain-bike-specific trail/survey
+             "n" = general cycling or multi-use trail — shown only when the
+                   "MTB-specific only" filter is unchecked
+     unit    the basis the source itself used: "day" | "night" | "trip" | "visit"
+             — deliberately NOT normalized to a single unit. See the filter-bar
+             note and the Sources tab for why.
+     nl      non-local (out-of-town) dollar value, or null if not reported
+     nlHi    optional upper bound, if the source gave a range instead of one number
+     lo      local (resident) dollar value, or null if not reported
+     loHi    optional upper bound for the local range
+     conf    "v" verified primary survey · "m" medium (blended/synthesis figure,
+             OR sourced only via a secondary compilation) · "l" low (borrowed
+             benchmark, heavy assumption, or generalized proxy) — see CONF_META
+     calc    true if the number is Claude's arithmetic on a stated source figure
+             (e.g. dividing an annual total by trips/year), not a number the
+             source itself printed as a rate — see the "note" for the math
+     src     short citation: authors, year, publisher, page numbers
+     note    caveat / methodology flag shown in the tooltip and Sources table
+   ============================================================================ */
+const SITES=[
+{id:"coldwater",site:"Coldwater Bike Trail",st:"AL",yr:2012,mtb:"y",unit:"day",nl:138.49,lo:60.87,conf:"v",calc:false,src:"Boozer, Self & Jankoski 2012 (Jacksonville State Univ.), pp.34–35",note:"Direct rider-survey figure (non-local includes lodging). The study's own authors judged it too high — respondents were self-selected enthusiasts — and built their published economic-impact projection on a lower blended figure instead: $104.25 non-local / $16.67 local, averaged from three other trails (pp.45–46)."},
+{id:"cgnf-bozeman",site:"Custer Gallatin NF – Bozeman/Big Sky",st:"MT",yr:2018,mtb:"y",unit:"trip",nl:146.01,lo:156.67,conf:"v",calc:false,src:"Maples & Bradley 2018 (Outdoor Alliance), pp.7–8, 13",note:"Conservative figure — excludes new-bike purchases. Including them (a one-time gear buy, not routine trip spending), the study's raw local figure is $251.36/trip."},
+{id:"cgnf-other",site:"Custer Gallatin NF – Other Study Areas",st:"MT/SD",yr:2018,mtb:"y",unit:"trip",nl:53.61,lo:98.66,conf:"v",calc:false,src:"Maples & Bradley 2018 (Outdoor Alliance), pp.8, 14",note:"One blended estimate applied to 4 lower-traffic areas (Livingston/Paradise Valley, Red Lodge/Cooke County, Sioux & Ashland, West Yellowstone) because each had too small a sample on its own."},
+{id:"oakridge",site:"Oakridge Trail System",st:"OR",yr:2014,mtb:"y",unit:"night",nl:83,nlHi:126,lo:null,conf:"v",calc:false,src:"Meltzer 2014 (Univ. of Oregon), p.32",note:"Direct survey of 132 non-local visitors; range depends on lodging type. A separate blended-comparator estimate elsewhere in the same report ($47.84–$63.07/night, drawing on Whistler/Jackson Hole data) is NOT Oakridge's own respondents — this entry uses the direct-survey number."},
+{id:"chattanooga",site:"Chattanooga Region Trails",st:"TN",yr:2022,mtb:"y",unit:"trip",nl:342.33,lo:null,conf:"v",calc:false,src:"Bailey & Chandler 2022 (SORBA / UTC Tourism Center), p.7",note:"Average stay 3.8 nights. Locals were 65% of riders but were not surveyed on spending. The source reports no per-day rate, and none is derived here."},
+{id:"wv-synthesis",site:"Cross-Study Synthesis (WVU)",st:"WV",yr:2019,mtb:"y",unit:"day",nl:150,lo:40,conf:"m",calc:false,src:"Eades & Arbogast 2019 (WVU Extension), Table 9, pp.10–11",note:"The authors' own rounded rule-of-thumb, built by inflation-adjusting Coldwater, Jackson Hole, Chequamegon, Nantahala/Pisgah, and Kingdom Trails figures to 2018 dollars — not a fresh survey of West Virginia riders."},
+{id:"wv-tucker",site:"Tucker County Race/Event Riders",st:"WV",yr:2019,mtb:"y",unit:"day",nl:143.27,lo:null,conf:"m",calc:false,src:"Eades & Arbogast 2019 (WVU Extension), Table 10, p.11",note:"Event/race-day spending — entry fees and event travel likely push this above a typical destination-trip day."},
+{id:"duluth-day",site:"Duluth Trails – Day-Trip Visitors",st:"MN",yr:2017,mtb:"y",unit:"trip",nl:48,lo:null,conf:"m",calc:true,src:"Savolt & McIntosh 2017 (Univ. of Minnesota Duluth), pp.13–14",note:"Source reports $431.77/YEAR across 9 trips/year. $48/trip = 431.77 ÷ 9, Claude's division, not stated directly by the study."},
+{id:"duluth-overnight",site:"Duluth Trails – Overnight Visitors",st:"MN",yr:2017,mtb:"y",unit:"night",nl:79,lo:null,conf:"m",calc:true,src:"Savolt & McIntosh 2017 (Univ. of Minnesota Duluth), pp.14–15",note:"Source reports $803.80/YEAR across 5.1 trips/year at ~2 nights/trip. $79/night ≈ 803.80 ÷ 5.1 ÷ 2, Claude's division. Locals reported $964.84/YEAR (mostly amortized bike purchases) — not shown here because a year isn't a comparable unit to a day or night."},
+{id:"keene",site:"Keene Trail Network (Goose Pond/Wheelock)",st:"NH",yr:2023,mtb:"y",unit:"visit",nl:106,nlHi:145,lo:null,conf:"l",calc:false,src:"Smith & O'Leary 2023 (UNH Extension), pp.6–7",note:"The study explicitly could NOT split local vs. non-local spending, and describes Keene's rider base as overwhelmingly local. This figure blends both — treat it as a floor, not a genuine non-local estimate."},
+{id:"kingdom-trails",site:"Kingdom Trails",st:"VT",yr:2016,mtb:"y",unit:"visit",nl:176,nlHi:190,lo:null,conf:"m",calc:false,src:"Camoin Associates 2016, via TPL Green Paper (2025) Appendix p.31 — original report not independently reviewed",note:null},
+{id:"camba",site:"Chequamegon Area Trails (CAMBA)",st:"WI",yr:2020,mtb:"y",unit:"day",nl:245.40,lo:null,conf:"l",calc:false,src:"Hadley & Trechter 2020, via TPL Green Paper (2025) Appendix p.33 — original report not independently reviewed",note:"PROVENANCE UNRESOLVED. The $245.40/day plotted here cannot be traced to the cited page: TPL's narrative (p.9) says $1,107/visit and its appendix table (p.33) says $1,017.18/visit, and neither reduces to $245.40 by any stated method. Tiered Low until the original Hadley & Trechter 2020 report is read directly. Treat as a placeholder, not a citation."},
+{id:"helena",site:"Mt. Ascension & Mt. Helena Trails",st:"MT",yr:2018,mtb:"y",unit:"day",nl:90,nlHi:111,lo:null,conf:"m",calc:false,src:"Sage & Nickerson 2018, via TPL Green Paper (2025) Appendix p.29 — original report not independently reviewed",note:null},
+{id:"gmug",site:"GMUG National Forests (4 areas)",st:"CO",yr:2018,mtb:"y",unit:"visit",nl:329,nlHi:617,lo:null,conf:"m",calc:false,src:"Maples & Bradley 2018, via TPL Green Paper (2025) Appendix pp.27–28 — original report not independently reviewed",note:"Range spans 4 sub-areas (Grand Junction, Crested Butte, West Slope, Ouray) — not one site's uncertainty band."},
+{id:"manti-lasal",site:"Manti-La Sal National Forest",st:"UT",yr:2022,mtb:"y",unit:"visit",nl:331.56,lo:null,conf:"m",calc:false,src:"Maples, Rehm & Bradley 2022, via TPL Green Paper (2025) Appendix p.32 — original report not independently reviewed",note:null},
+{id:"eastern-trail",site:"Eastern Trail (paved rail-trail)",st:"ME",yr:2018,mtb:"n",unit:"day",nl:242.35,lo:null,conf:"m",calc:false,src:"Eastern Trail Alliance 2018, via TPL Green Paper (2025) Appendix p.27",note:"Non-MTB comparison point: paved multi-use rail-trail, all trail users combined, not mountain bikers specifically."},
+{id:"pikes-overnight",site:"Pikes Peak Region – Non-Resident Overnight",st:"CO",yr:2014,mtb:"n",unit:"day",nl:250,lo:null,conf:"m",calc:false,src:"Steer Davies Gleave for PPACG/TOSC, ~2014–15, Table 5.1 p.19",note:"General cycling (road + recreational), not MTB-specific. Included because Colorado Springs is the direct regional comparison market."},
+{id:"pikes-daytrip",site:"Pikes Peak Region – Non-Resident Day Trip",st:"CO",yr:2014,mtb:"n",unit:"day",nl:110,lo:3,conf:"m",calc:false,src:"Steer Davies Gleave for PPACG/TOSC, ~2014–15, Table 5.1 p.19",note:"Local figure ($3/day) is general residential recreational cycling, not a trail-specific day visit."},
+{id:"central-ohio",site:"Central Ohio Greenways (paved)",st:"OH",yr:2015,mtb:"n",unit:"visit",nl:null,lo:3,loHi:22,conf:"v",calc:false,src:"Lindsey et al. 2015 (Univ. of Minnesota / MORPC), pp.19–20",note:"Paved multi-use commuter/recreation trail network, not MTB singletrack. Included only to show how low incidental local spending is without a tourism draw. No non-local figure was measured."},
+{id:"james-river",site:"James River Park System",st:"VA",yr:2017,mtb:"n",unit:"day",nl:32.99,lo:10.99,conf:"l",calc:false,src:"VCU JRPS Economic Impact Report 2017, p.4",note:"Figure is borrowed wholesale from a generic Virginia State Parks report (Magnini & Uysal 2016) — not JRPS's own visitors, and not MTB-specific."},
+{id:"bentonville",site:"Bentonville / NW Arkansas (general cycling)",st:"AR",yr:2023,mtb:"n",unit:"day",nl:97,lo:null,conf:"l",calc:true,src:"BBC Research / Univ. of Arkansas 2023, pp.14–15",note:"The underlying $194-over-a-2-day-stay figure is a statewide Arkansas tourism average applied to device-tracked bicycling visitors — not a bike-specific survey. $97/day = 194 ÷ 2, Claude's division."},
+];
+
+/* ==== CONF_META — confidence tier -> label, color var, and plain-language
+   meaning. Rendered as a colored letter badge PLUS the word, never color alone.
+   TO ADD A TIER: add one entry; every render function reads from this. ======== */
+const CONF_META={
+  v:{label:"Verified",  color:"var(--tier-v)", desc:"A primary study's own direct rider survey."},
+  m:{label:"Medium",    color:"var(--tier-m)", desc:"A blended/synthesis figure across trails, or reached only through a secondary compilation whose original study wasn't independently reviewed."},
+  l:{label:"Low",       color:"var(--tier-l)", desc:"Borrowed from an unrelated benchmark, a heavy generalizing assumption, a proxy not specific to mountain biking, or a figure that could not be traced back to the source cited beside it."},
+};
+
+/* Fallback for a `conf` value that is not in CONF_META. A typo in a data row used
+   to throw inside tierBadge() and blank the entire tab; it now renders one visible
+   "?" badge instead, so a bad row shows up as a bad row, not an empty page. */
+const CONF_FALLBACK={label:"Untiered", color:"var(--ink-soft)", desc:"No confidence tier set on this record — treat it as unverified."};
+
+/* ==== UNIT_META — reporting basis -> short badge text. Deliberately NOT
+   converted to a common unit; see filter-bar note. =========================== */
+const UNIT_META={day:"/day",night:"/night",trip:"/trip",visit:"/visit"};
+
+/* ==== THEMES REGISTRY — the single source of truth for every color theme.
+   TO ADD A THEME: add ONE entry here, then add a matching CSS [data-theme]
+   block above. Only "ledger" ships this pass; kept as a registry (not a single
+   hard-coded palette) so a second theme is a one-line addition later, same
+   pattern as every other PMR tool. ============================================ */
+const THEMES=[
+  {id:"ledger", label:"Ledger", swatch:"#8a5a2b"},
+];
+const DEFAULT_THEME="ledger";
+
+/* ==== TABS REGISTRY — the single source of truth for every tab. ============
+   TO ADD A TAB: write your render function, then add ONE line here. The
+   button, the panel <div>, the show/hide logic, and the render dispatch all
+   derive from this array.
+     id      unique key; the panel becomes <div id="p-{id}">
+     label   visible button text
+     render  name of the function that fills that panel (string, looked up by
+             name at click time — render functions are declared further down
+             the file, so a direct reference here would hit a declaration-order
+             trap)
+     filters set false if the tab ignores the MTB-only / ranges checkboxes
+   ============================================================================ */
+const TABS=[
+  {id:"bysite",  label:"By Site",              render:"renderBySite",  filters:true},
+  {id:"range",   label:"Range (all studies)",  render:"renderRange",   filters:true},
+  {id:"sources", label:"Sources & Methodology",render:"renderSources", filters:false},
+];
+
+/* ================== END OF DATA — everything below is logic ================== */
+
+/* ---------- tuning constants (named so they're findable, not buried in functions) ---------- */
+const BAR_MAX_DOLLARS=650;      // right edge of the linear $ axis on "By Site" bars;
+                                 // set just above the highest MTB-specific value (GMUG $617)
+                                 // so bars use the full width without one outlier crushing the rest
+const RANGE_AXIS_MIN=1;         // log-scale floor; must be >0 or log() breaks
+const RANGE_AXIS_MAX=1200;      // just above the highest value in the dataset (Cable WI $1,107,
+                                 // referenced in a note but not plotted — see camba entry)
+const RANGE_DOT_R=6;            // strip-plot dot radius, px
+const RANGE_DOT_R_HOVER=8;      // dot radius on hover/focus, for touch/visual feedback
+const RANGE_ROW_H=34;           // vertical spacing between stacked dots in the same lane
+const RANGE_LANE_GAP=64;        // vertical gap between the "non-local" and "local" lanes
+
+/* ── runtime state ───────────────────────────────────────────────────────── */
+let activeTab=TABS[0].id;
+let filterMtbOnly=true;
+let filterShowRanges=true;
+
+/* ── small helpers ───────────────────────────────────────────────────────── */
+function esc(s){ // escape any user-facing string before it touches innerHTML
+  return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function fmtMoney(v){
+  // Round to cents first, THEN decide whether to show decimals — a naive
+  // trailing-zero strip on toFixed(2) turned $245.40 into "$245.4" (stripped
+  // one zero, not the whole fractional part). Whole-dollar cents show as an
+  // integer; anything else always shows exactly two decimal places.
+  const cents=Math.round(v*100);
+  return cents%100===0 ? "$"+(cents/100) : "$"+(cents/100).toFixed(2);
+}
+function tierBadge(tier){
+  // Never throw on a bad `conf` — see CONF_FALLBACK in the data block for why.
+  const known=Object.prototype.hasOwnProperty.call(CONF_META,tier);
+  const t=known?CONF_META[tier]:CONF_FALLBACK;
+  const letter=known?String(tier).toUpperCase():"?";
+  return `<span class="tierbadge" style="background:${t.color}" title="${esc(t.label)}: ${esc(t.desc)}">${esc(letter)}</span>`;
+}
+function visibleSites(){
+  return SITES.filter(s=> filterMtbOnly ? s.mtb==="y" : true);
+}
+
+/* ── tooltip (shared by both charts) ─────────────────────────────────────── */
+const tipEl=document.getElementById("tooltip");
+function showTip(evt,html){
+  tipEl.innerHTML=html;
+  tipEl.style.display="block";
+  const pad=12;
+  let x=evt.clientX+pad, y=evt.clientY+pad;
+  // keep the tooltip on-screen near the right/bottom edges
+  const tw=tipEl.offsetWidth||260, th=tipEl.offsetHeight||80;
+  if(x+tw>window.innerWidth-6) x=evt.clientX-tw-pad;
+  if(y+th>window.innerHeight-6) y=evt.clientY-th-pad;
+  tipEl.style.left=x+"px"; tipEl.style.top=y+"px";
+}
+function hideTip(){ tipEl.style.display="none"; }
+function siteTipHtml(s,which){
+  const val = which==="nl" ? s.nl : s.lo;
+  const hi  = which==="nl" ? s.nlHi : s.loHi;
+  if(val==null) return "";
+  const label = which==="nl" ? "Non-local" : "Local";
+  const range = hi!=null ? ` – ${fmtMoney(hi)}` : "";
+  const calc = s.calc ? `<span class="tt-note">⚠ Includes a Claude-assisted calculation — see note.</span>` : "";
+  const note = s.note ? `<span class="tt-note">${esc(s.note)}</span>` : "";
+  return `<b>${esc(s.site)}</b> (${esc(s.st)}, ${s.yr})<br>${label}: <b>${fmtMoney(val)}${range}${UNIT_META[s.unit]}</b> ${tierBadge(s.conf)}${calc}${note}`;
+}
+
+/* ==== renderBySite() — paired local/non-local bars, one row per site. ==========
+   Linear $ axis, shared across all rows (BAR_MAX_DOLLARS). Bars are NOT unit-
+   normalized — each carries its own unit badge — by design; see the filter-bar
+   note in the markup for why forcing a common unit would misrepresent sources
+   that measure fundamentally different things (a day vs. a whole multi-day trip). */
+function renderBySite(container){
+  const rows=visibleSites();
+  let html=`<div id="siteRows">`;
+  rows.forEach(s=>{
+    html+=`<div class="siterow">
+      <div class="siterow-head">
+        <span class="siterow-name">${esc(s.site)} <span class="siterow-meta">(${esc(s.st)}, ${s.yr})</span></span>
+        ${tierBadge(s.conf)}
+      </div>
+      <div class="bargroup">`;
+    html+=barLine("Non-local",s,"nl","nonlocal");
+    html+=barLine("Local",s,"lo","local");
+    html+=`</div></div>`;
+  });
+  html+=`</div>`;
+  if(rows.length===0){
+    html=`<p class="nodata">No sites match the current filters.</p>`;
+  }
+  container.innerHTML=html;
+  wireBarEvents(container);
+}
+function barLine(label,s,key,cls){
+  const val=s[key], hi=s[key+"Hi"];
+  if(val==null) return `<div class="barline"><span class="barlabel">${esc(label)}</span><span class="nodata">not reported</span></div>`;
+  const showHi = filterShowRanges && hi!=null;
+  const pxLo=Math.min(100, (val/BAR_MAX_DOLLARS)*100);
+  const pxHi=showHi? Math.min(100,(hi/BAR_MAX_DOLLARS)*100) : pxLo;
+  const at=`data-site="${esc(s.id)}" data-which="${key}"`;
+  // A reported range renders as TWO segments: a solid bar out to the LOW bound,
+  // then a hatched extension to the high bound. Drawing only the high bound (the
+  // original bug) made GMUG's $329–$617 read as a flat "$617" — the longest bar
+  // in the tool — with nothing on screen marking where the range actually starts.
+  const fills = showHi
+    ? `<span class="barfill ${cls} rangelow" ${at} style="width:${pxLo}%"></span>` +
+      `<span class="barfill range ${cls==='local'?'localrange':''} rangeext" ${at} style="left:${pxLo}%;width:${Math.max(0,pxHi-pxLo)}%"></span>`
+    : `<span class="barfill ${cls}" ${at} style="width:${pxLo}%"></span>`;
+  const displayVal = showHi ? `${fmtMoney(val)}–${fmtMoney(hi)}` : fmtMoney(val);
+  return `<div class="barline">
+    <span class="barlabel">${esc(label)}</span>
+    <span class="bartrack">${fills}</span>
+    <span class="barval">${displayVal}<span class="unitbadge">${UNIT_META[s.unit]}</span></span>
+    ${s.calc?'<span class="calcflag" title="Claude-assisted calculation — see tooltip">calc</span>':''}
+  </div>`;
+}
+function wireBarEvents(container){
+  container.querySelectorAll(".barfill").forEach(el=>{
+    const site=SITES.find(x=>x.id===el.dataset.site);
+    const which=el.dataset.which;
+    el.addEventListener("mousemove",e=>showTip(e,siteTipHtml(site,which)));
+    el.addEventListener("mouseleave",hideTip);
+    el.addEventListener("click",e=>showTip(e,siteTipHtml(site,which))); // tap support
+  });
+}
+
+/* ==== renderRange() — log-scale strip plot of every value across all sites. ====
+   Two lanes (non-local / local), each site's value(s) plotted as a dot on a
+   shared log axis. Log scale is used deliberately — reported values span
+   roughly $3 to $600+ (over two orders of magnitude) — and is labeled as such
+   so nobody mistakes dot spacing for a linear read. */
+function renderRange(container){
+  const rows=visibleSites();
+  // W is measured from the actual panel width, not a fixed constant, so the
+  // viewBox maps 1:1 to on-screen pixels at every size — text and dots stay
+  // legible on a phone instead of shrinking with a wide fixed-width viewBox
+  // (that was the original bug: a 900-unit viewBox squeezed into a ~380px
+  // phone screen forced horizontal scrolling and shrank every label).
+  const W=Math.max(300, container.clientWidth || 340);
+  const PADL = W<420 ? 44 : 54;   // narrower left gutter on small screens
+  const PADR = 14, PADT = 18;
+  const nlVals=[], loVals=[];
+  rows.forEach(s=>{
+    if(s.nl!=null) nlVals.push(s);
+    if(s.lo!=null) loVals.push(s);
+  });
+  const lanesH = PADT + RANGE_ROW_H*Math.max(nlVals.length,1) + RANGE_LANE_GAP + RANGE_ROW_H*Math.max(loVals.length,1) + 40;
+  const xScale=v=>{
+    const lo=Math.log10(RANGE_AXIS_MIN), hi=Math.log10(RANGE_AXIS_MAX);
+    const t=(Math.log10(Math.max(v,RANGE_AXIS_MIN))-lo)/(hi-lo);
+    return PADL + t*(W-PADL-PADR);
+  };
+  // axis ticks at clean log steps — thinner set on narrow screens so labels
+  // don't collide (viewBox now equals real screen pixels, so crowding is a
+  // real risk here in a way it wasn't with the old fixed-900 viewBox)
+  const ticks = W<420 ? [1,10,100,1000] : [1,10,50,100,250,500,1000];
+  let svg=`<svg class="rangesvg" viewBox="0 0 ${W} ${lanesH}" width="100%" role="img" aria-label="Distribution of reported daily, nightly, per-trip, and per-visit spending across studies">`;
+  // gridlines + tick labels
+  ticks.forEach(t=>{
+    const x=xScale(t);
+    svg+=`<line x1="${x}" y1="${PADT}" x2="${x}" y2="${lanesH-24}" stroke="var(--line)" stroke-width="1"/>`;
+    svg+=`<text x="${x}" y="${lanesH-8}" font-size="11" fill="var(--ink-soft)" text-anchor="middle">$${t}</text>`;
+  });
+  // lane labels
+  svg+=`<text x="${PADL}" y="${PADT-4}" font-size="12" font-weight="700" fill="var(--nonlocal)">NON-LOCAL</text>`;
+  const loLaneY0=PADT+RANGE_ROW_H*Math.max(nlVals.length,1)+RANGE_LANE_GAP;
+  svg+=`<text x="${PADL}" y="${loLaneY0-6}" font-size="12" font-weight="700" fill="var(--local)">LOCAL</text>`;
+  // dots — non-local lane
+  nlVals.forEach((s,i)=>{
+    const y=PADT+14+i*RANGE_ROW_H;
+    svg+=rangeDotSvg(s,"nl",s.nl,xScale(s.nl),y,"var(--nonlocal)");
+    if(filterShowRanges && s.nlHi!=null){
+      svg+=`<line x1="${xScale(s.nl)}" y1="${y}" x2="${xScale(s.nlHi)}" y2="${y}" stroke="var(--nonlocal)" stroke-width="2" opacity=".55"/>`;
+      svg+=rangeDotSvg(s,"nl",s.nlHi,xScale(s.nlHi),y,"var(--nonlocal)",true);
+    }
+  });
+  // dots — local lane
+  loVals.forEach((s,i)=>{
+    const y=loLaneY0+14+i*RANGE_ROW_H;
+    svg+=rangeDotSvg(s,"lo",s.lo,xScale(s.lo),y,"var(--local)");
+    if(filterShowRanges && s.loHi!=null){
+      svg+=`<line x1="${xScale(s.lo)}" y1="${y}" x2="${xScale(s.loHi)}" y2="${y}" stroke="var(--local)" stroke-width="2" opacity=".55"/>`;
+      svg+=rangeDotSvg(s,"lo",s.loHi,xScale(s.loHi),y,"var(--local)",true);
+    }
+  });
+  svg+=`</svg>`;
+  container.innerHTML = rows.length
+    ? `<div class="rangewrap">${svg}<p class="rangecap">Log-scale axis — values span roughly $3 to over $600, more than two orders of magnitude. Each dot is one reported figure exactly as its source stated it (day, night, trip, or visit — hover or tap for which). A short line marks a reported range.</p></div>`
+    : `<p class="nodata">No sites match the current filters.</p>`;
+  container.querySelectorAll(".rangedot").forEach(el=>{
+    const site=SITES.find(x=>x.id===el.dataset.site);
+    const which=el.dataset.which;
+    el.addEventListener("mousemove",e=>showTip(e,siteTipHtml(site,which)));
+    el.addEventListener("mouseleave",hideTip);
+    el.addEventListener("click",e=>showTip(e,siteTipHtml(site,which)));
+  });
+}
+function rangeDotSvg(s,which,val,x,y,color,isHiEnd){
+  const r = isHiEnd ? RANGE_DOT_R-1 : RANGE_DOT_R;
+  const op = isHiEnd ? 0.65 : 1;
+  return `<circle class="rangedot" data-site="${esc(s.id)}" data-which="${which}" cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="${op}" stroke="var(--card)" stroke-width="1.5"><title>${esc(s.site)}: ${fmtMoney(val)}${UNIT_META[s.unit]}</title></circle>`;
+}
+
+/* ==== renderSources() — methodology, tier legend, full citation table,
+   and the deliberate exclusions — same "what's excluded and why" discipline
+   as the Trail Advocacy Atlas README. ============================================ */
+function renderSources(container){
+  let tierRows="";
+  Object.keys(CONF_META).forEach(k=>{
+    const t=CONF_META[k];
+    tierRows+=`<div class="legend item">${tierBadge(k)} <b>${esc(t.label)}</b> — ${esc(t.desc)}</div>`;
+  });
+  let srcRows="";
+  SITES.forEach(s=>{
+    srcRows+=`<tr>
+      <td>${esc(s.site)} (${esc(s.st)}, ${s.yr})${s.mtb==='n'?' <em>— not MTB-specific</em>':''}</td>
+      <td>${tierBadge(s.conf)}</td>
+      <td>${esc(s.src)}</td>
+      <td>${esc(s.note||"")}</td>
+    </tr>`;
+  });
+  container.innerHTML=`
+    <div class="srcnote">
+      <h3>Confidence tiers</h3>
+      <div style="display:flex;flex-direction:column;gap:6px">${tierRows}</div>
+    </div>
+    <div class="srcnote">
+      <h3>Why units aren't normalized</h3>
+      <p style="margin:0">Every figure is shown exactly as its source reported it — per day, per night, per trip, or per visit — rather than converted to one common unit. Forcing everything into "per day" would require assuming an average trip length for studies that didn't report one, which would quietly manufacture precision the sources don't have. Where a conversion IS shown (marked <span class="calcflag">calc</span>), the arithmetic is stated in the note, using only numbers the source itself printed.</p>
+    </div>
+    <div class="srcnote">
+      <h3>Excluded — no usable day/trip figure found</h3>
+      <ul class="excludelist">
+        <li><b>Marquette, MI</b> (Jordan 2015, MSU EDA REI) — qualitative ecotourism/sustainability paper; no spending survey.</li>
+        <li><b>Iowa</b> (2025 statewide bicycling study) — focused on commuting and in-state riders; no isolated out-of-state MTB tourist day-spend figure.</li>
+        <li><b>Tasmania</b> (MTB Network Tasmania, 2026) — reports MTB visitors spend "26% more per trip" than other tourists, a relative figure only, in AUD, with no absolute per-day number.</li>
+        <li><b>TPL Green Paper's Coldwater appendix entry</b> ($185.51 non-local / $39.75 local) — could not be traced back into the underlying Boozer et al. 2012 text, which only supports the two values shown for Coldwater above. Left out rather than guessed at.</li>
+      </ul>
+    </div>
+    <div class="srcnote">
+      <h3>Full source table</h3>
+      <div style="overflow-x:auto"><table class="srctable">
+        <tr><th>Site</th><th>Tier</th><th>Source</th><th>Note</th></tr>
+        ${srcRows}
+      </table></div>
+    </div>
+  `;
+}
+
+/* ── tab wiring, filter wiring, theme, init ──────────────────────────────── */
+function applyTheme(id){
+  document.documentElement.setAttribute("data-theme",id);
+  const t=THEMES.find(x=>x.id===id) || THEMES[0];
+  // theme-color meta stays in step for the mobile browser chrome
+  document.querySelector('meta[name="theme-color"]').setAttribute("content", id==="ledger" ? "#f4ede1" : "#f4ede1");
+}
+function buildLegendTop(){
+  let html="";
+  html+=`<span class="item"><span class="swatch" style="background:var(--nonlocal)"></span>Non-local / out-of-town</span>`;
+  html+=`<span class="item"><span class="swatch" style="background:var(--local)"></span>Local / resident</span>`;
+  Object.keys(CONF_META).forEach(k=>{
+    html+=`<span class="item">${tierBadge(k)} ${esc(CONF_META[k].label)}</span>`;
+  });
+  document.getElementById("legendTop").innerHTML=html;
+}
+function renderActiveTab(){
+  const tab=TABS.find(t=>t.id===activeTab);
+  const panel=document.getElementById("p-"+tab.id);
+  window[tab.render](panel);
+}
+function buildTabsAndPanels(){
+  const bar=document.getElementById("tabbar");
+  const panels=document.getElementById("panels");
+  bar.innerHTML = TABS.map(t=>`<button class="tabbtn" id="tabbtn-${t.id}" role="tab" aria-pressed="${t.id===activeTab}">${esc(t.label)}</button>`).join("");
+  panels.innerHTML = TABS.map(t=>`<div class="panel" id="p-${t.id}" data-active="${t.id===activeTab}"></div>`).join("");
+  TABS.forEach(t=>{
+    document.getElementById("tabbtn-"+t.id).addEventListener("click",()=>{
+      activeTab=t.id;
+      TABS.forEach(o=>{
+        document.getElementById("tabbtn-"+o.id).setAttribute("aria-pressed", o.id===t.id);
+        document.getElementById("p-"+o.id).setAttribute("data-active", o.id===t.id);
+      });
+      document.getElementById("filterbar").style.display = t.filters ? "flex" : "none";
+      renderActiveTab();
+    });
+  });
+}
+function wireFilters(){
+  document.getElementById("mtbOnly").addEventListener("change",e=>{
+    filterMtbOnly=e.target.checked; renderActiveTab();
+  });
+  document.getElementById("showRanges").addEventListener("change",e=>{
+    filterShowRanges=e.target.checked; renderActiveTab();
+  });
+}
+// Redraw the Range tab's SVG on resize/orientation-change, debounced —
+// its viewBox is measured from the container's actual pixel width (see
+// renderRange), so a stale render after a resize would misalign text and
+// dots against the new width rather than just looking generically "off".
+const RESIZE_DEBOUNCE_MS=150;
+let resizeTimer=null;
+window.addEventListener("resize",()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer=setTimeout(()=>{ if(activeTab==="range") renderActiveTab(); }, RESIZE_DEBOUNCE_MS);
+});
+
+function init(){
+  applyTheme(DEFAULT_THEME);
+  buildLegendTop();
+  buildTabsAndPanels();
+  wireFilters();
+  renderActiveTab();
+}
+init();
+</script>
+</body>
+</html>
