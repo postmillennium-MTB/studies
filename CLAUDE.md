@@ -155,6 +155,23 @@ tidy up reintroduces the bug.
   place is that phones get stacked cards instead of a table. **And beware the probe:
   `document.body.scrollWidth` stays at 360 and reports no problem — only
   `window.scrollX` after an attempted scroll catches this.**
+- **Never hide a tooltip on `mouseleave`.** A browser synthesizes compatibility
+  mouse events after a tap, in this order:
+  `pointerdown → touchstart → touchend → mousemove → click → mouseleave`.
+  A `mouseleave → hideTip` therefore fires straight after the `click` that showed
+  it, and the tooltip never appears on a phone at all — which silently made every
+  citation and caveat unreachable from both charts. Hover is gated on
+  `pointerType === "mouse"` via POINTER events, which the synthesized mouse events
+  cannot reach; the tap path reads its type from `pointerdown`, not from the
+  click, because a click is not a PointerEvent in every browser. All of it lives
+  in `wireTipTarget`, used by both the bars and the range dots — it was duplicated
+  before, so this bug existed twice.
+- **`showTip` clamps to the viewport LAST, on both axes, after the flips.**
+  Flipping away from the right edge without clamping walks off the left one: on a
+  375px screen a 270px tooltip flipped left for any tap past x=87 — 52% of the
+  width — and landed at x=-175, two thirds off-screen with the text sheared
+  mid-word. Flipping alone is only safe while the viewport is far wider than the
+  tooltip.
 - **The theme preference is stored as `"id|scheme"`, not just the id.** That is what
   lets the pre-paint shim in `<head>` set both the palette and the light/dark scheme
   without knowing the `THEMES` registry exists. The storage key string is duplicated
