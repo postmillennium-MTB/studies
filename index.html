@@ -127,6 +127,18 @@ a{color:var(--accent)}
 }
 .filterbar label{display:flex;align-items:center;gap:6px;cursor:pointer;min-height:40px}
 .filterbar input[type="checkbox"]{width:17px;height:17px}
+.tierfilter{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.tierfilter-label{font-weight:700;color:var(--ink);margin-right:2px}
+.tierbtn{
+  appearance:none;cursor:pointer;font:inherit;font-size:.78rem;font-weight:600;
+  display:inline-flex;align-items:center;gap:5px;min-height:40px;padding:4px 10px;
+  border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);
+}
+/* Off state never relies on color alone: aria-pressed carries it for assistive
+   tech, and the struck-through label plus dimming carry it in greyscale. */
+.tierbtn[aria-pressed="false"]{opacity:.45;background:transparent}
+.tierbtn[aria-pressed="false"] .tierbtn-label{text-decoration:line-through}
+.tierbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .filterbar .note{color:var(--ink-soft);font-size:.78rem;flex-basis:100%}
 
 /* ── Legend ───────────────────────────────────────────────────────────────── */
@@ -191,6 +203,7 @@ a{color:var(--accent)}
 .srctable th,.srctable td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
 .srctable th{color:var(--ink-soft);font-size:.7rem;text-transform:uppercase;letter-spacing:.03em}
 .excludelist{font-size:.82rem;line-height:1.6}
+.srccount{font-weight:400;color:var(--ink-soft);font-size:.82em}
 .srclink{color:var(--accent);text-decoration:none;font-weight:600}
 .srclink:hover{text-decoration:underline}
 .srclink:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
@@ -229,7 +242,9 @@ footer a:hover{text-decoration:underline}
 
   <div class="filterbar" id="filterbar">
     <label><input type="checkbox" id="mtbOnly" checked> MTB-specific studies only</label>
-    <label><input type="checkbox" id="showRanges" checked> Show reported ranges</label>
+    <label id="rangesControl"><input type="checkbox" id="showRanges" checked> Show reported ranges</label>
+    <!-- Confidence toggles are BUILT FROM CONF_META by buildTierFilters(). -->
+    <span class="tierfilter" id="tierFilter"></span>
     <span class="note">Bars and dots plot the dollar figure exactly as each study reported it. Studies measure different things — a day, a night, a trip, a whole visit — so a unit badge sits on every value. Don't read two different units as directly comparable; that inconsistency is itself part of the story (see Sources tab).</span>
   </div>
 
@@ -310,7 +325,7 @@ const SITES=[
 {id:"wv-tucker",site:"Tucker County Race/Event Riders",st:"WV",yr:2019,mtb:"y",unit:"day",nl:143.27,lo:null,conf:"m",calc:false,src:"Eades & Arbogast 2019 (WVU Extension), Table 10, p.11",url:"https://extension.wvu.edu/files/d/8d8adea5-a36b-4670-a729-4cc9143add34/economic-impacts-of-mountain-biking-and-bike-trail-systems-in-west-virginia-051619.pdf",archiveUrl:null,note:"Event/race-day spending — entry fees and event travel likely push this above a typical destination-trip day."},
 {id:"duluth-day",site:"Duluth Trails – Day-Trip Visitors",st:"MN",yr:2017,mtb:"y",unit:"trip",nl:48,lo:null,conf:"m",calc:true,src:"Savolt 2017 (Univ. of Minnesota Duluth, undergraduate Honors Capstone; faculty supervisor C. McIntosh), pp.13–14",url:"https://conservancy.umn.edu/items/ae2b41c8-92a4-4bde-9124-6ce2403e92a5",archiveUrl:null,note:"An undergraduate Honors Capstone, not a commissioned or peer-reviewed study — weigh it accordingly. Source reports $431.77/YEAR across 9 trips/year. $48/trip = 431.77 ÷ 9, Claude's division, not stated directly by the study."},
 {id:"duluth-overnight",site:"Duluth Trails – Overnight Visitors",st:"MN",yr:2017,mtb:"y",unit:"night",nl:79,lo:null,conf:"m",calc:true,src:"Savolt 2017 (Univ. of Minnesota Duluth, undergraduate Honors Capstone; faculty supervisor C. McIntosh), pp.14–15",url:"https://conservancy.umn.edu/items/ae2b41c8-92a4-4bde-9124-6ce2403e92a5",archiveUrl:null,note:"An undergraduate Honors Capstone, not a commissioned or peer-reviewed study — weigh it accordingly. Source reports $803.80/YEAR across 5.1 trips/year at ~2 nights/trip. $79/night ≈ 803.80 ÷ 5.1 ÷ 2, Claude's division. Locals reported $964.84/YEAR (mostly amortized bike purchases) — not shown here because a year isn't a comparable unit to a day or night."},
-{id:"keene",site:"Keene Trail Network (Goose Pond/Wheelock)",st:"NH",yr:2023,mtb:"y",unit:"visit",nl:106,nlHi:145,lo:null,conf:"l",calc:false,src:"Smith & O'Leary 2023 (UNH Extension), pp.6–7",url:null,archiveUrl:null,note:"The study explicitly could NOT split local vs. non-local spending, and describes Keene's rider base as overwhelmingly local. This figure blends both — treat it as a floor, not a genuine non-local estimate."},
+{id:"keene",site:"Keene Trail Network (Goose Pond/Wheelock)",st:"NH",yr:2023,mtb:"y",unit:"visit",nl:106,nlHi:145,lo:null,conf:"l",calc:false,src:"Smith & O'Leary 2023 (UNH Extension), pp.6–7",url:"https://scholars.unh.edu/cgi/viewcontent.cgi?article=2746&context=extension",archiveUrl:null,note:"The study explicitly could NOT split local vs. non-local spending, and describes Keene's rider base as overwhelmingly local. This figure blends both — treat it as a floor, not a genuine non-local estimate."},
 {id:"kingdom-trails",site:"Kingdom Trails",st:"VT",yr:2016,mtb:"y",unit:"visit",nl:176,nlHi:190,lo:null,conf:"m",calc:false,src:"Camoin Associates 2016 for the Vermont Trails & Greenways Council (a 4-organization study), via TPL Green Paper (2025) Appendix p.31 — original report not independently reviewed",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,origUrl:"https://fpr.vermont.gov/sites/fpr/files/Recreation/Learn_More/Library/Final%20Report-%20Impact%20Analysis%20-%20VT%20Trails%20and%20Greenways.pdf",origArchiveUrl:null,note:null},
 {id:"camba",site:"Chequamegon Area Trails (CAMBA)",st:"WI",yr:2020,mtb:"y",unit:"day",nl:245.40,lo:null,conf:"l",calc:false,src:"Hadley & Trechter 2020 (UW–River Falls Survey Research Center), via TPL Green Paper (2025) Appendix p.33 — original report not independently reviewed",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,origUrl:"https://outdoorrecreation.wi.gov/Documents/Research%20Library%20Page%20files/Wisconsin/CAMBA%20Economic%20Impact%20&%20User%20Survey_2020.pdf",origArchiveUrl:null,note:"PROVENANCE UNRESOLVED. The $245.40/day plotted here cannot be traced to the cited page: TPL's narrative (p.9) says $1,107/visit and its appendix table (p.33) says $1,017.18/visit, and neither reduces to $245.40 by any stated method. Tiered Low until the original Hadley & Trechter 2020 report is read directly. Treat as a placeholder, not a citation."},
 {id:"helena",site:"Mt. Ascension & Mt. Helena Trails",st:"MT",yr:2018,mtb:"y",unit:"day",nl:90,nlHi:111,lo:null,conf:"m",calc:false,src:"Sage & Nickerson 2018, via TPL Green Paper (2025) Appendix p.29 — original report not independently reviewed",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,origUrl:"https://scholarworks.umt.edu/itrr_pubs/365/",origArchiveUrl:null,note:null},
@@ -391,12 +406,14 @@ const DEFAULT_THEME="ledger";
              name at click time — render functions are declared further down
              the file, so a direct reference here would hit a declaration-order
              trap)
-     filters set false if the tab ignores the MTB-only / ranges checkboxes
+     ranges  set false if the tab draws no reported ranges, which hides the
+             "Show reported ranges" control there. The MTB-only and confidence
+             filters apply on EVERY tab, so nothing else is per-tab.
    ============================================================================ */
 const TABS=[
-  {id:"bysite",  label:"By Site",              render:"renderBySite",  filters:true},
-  {id:"range",   label:"Range (all studies)",  render:"renderRange",   filters:true},
-  {id:"sources", label:"Sources & Methodology",render:"renderSources", filters:false},
+  {id:"bysite",  label:"By Site",              render:"renderBySite",  ranges:true},
+  {id:"range",   label:"Range (all studies)",  render:"renderRange",   ranges:true},
+  {id:"sources", label:"Sources & Methodology",render:"renderSources", ranges:false},
 ];
 
 /* ================== END OF DATA — everything below is logic ================== */
@@ -417,6 +434,7 @@ const RANGE_LANE_GAP=64;        // vertical gap between the "non-local" and "loc
 let activeTab=TABS[0].id;
 let filterMtbOnly=true;
 let filterShowRanges=true;
+const filterTiers=Object.fromEntries(Object.keys(CONF_META).map(k=>[k,true]));
 
 /* ── small helpers ───────────────────────────────────────────────────────── */
 function esc(s){ // escape any user-facing string before it touches innerHTML
@@ -462,7 +480,10 @@ function srcCell(s){
   return linkedText(s,s.src) + (hasOrig ? ` <span class="origlink">${linkedText(orig,"original study",ORIG_LINK_ICON)}</span>` : "");
 }
 function visibleSites(){
-  return SITES.filter(s=> filterMtbOnly ? s.mtb==="y" : true);
+  // !==false, not ===true: a row whose conf is not in CONF_META has no toggle,
+  // so it stays VISIBLE rather than silently vanishing with no way to get it
+  // back. Same instinct as the tierBadge() guard.
+  return SITES.filter(s => (filterMtbOnly ? s.mtb==="y" : true) && filterTiers[s.conf]!==false);
 }
 
 /* ── tooltip (shared by both charts) ─────────────────────────────────────── */
@@ -640,7 +661,9 @@ function renderSources(container){
     exclusionRows+=`<li><b>${esc(x.what)}</b> (${linkedText(x,x.cite)}) — ${esc(x.why)}</li>`;
   });
   let srcRows="";
-  SITES.forEach(s=>{
+  const srcSites=visibleSites();
+  if(!srcSites.length) srcRows=`<tr><td colspan="4" class="nodata">No studies match the current filters.</td></tr>`;
+  srcSites.forEach(s=>{
     srcRows+=`<tr>
       <td>${esc(s.site)} (${esc(s.st)}, ${s.yr})${s.mtb==='n'?' <em>— not MTB-specific</em>':''}</td>
       <td>${tierBadge(s.conf)}</td>
@@ -654,7 +677,7 @@ function renderSources(container){
       <div style="display:flex;flex-direction:column;gap:6px">${tierRows}</div>
     </div>
     <div class="srcnote">
-      <h3>Full source table</h3>
+      <h3>Source table <span class="srccount">— showing ${srcSites.length} of ${SITES.length} studies</span></h3>
       <div style="overflow-x:auto"><table class="srctable">
         <tr><th>Site</th><th>Confidence</th><th>Source</th><th>Note</th></tr>
         ${srcRows}
@@ -677,6 +700,20 @@ function applyTheme(id){
   const t=THEMES.find(x=>x.id===id) || THEMES[0];
   // theme-color meta stays in step for the mobile browser chrome
   document.querySelector('meta[name="theme-color"]').setAttribute("content", id==="ledger" ? "#f4ede1" : "#f4ede1");
+}
+function buildTierFilters(){
+  const el=document.getElementById("tierFilter");
+  el.innerHTML=`<span class="tierfilter-label">Confidence:</span>`+Object.keys(CONF_META).map(k=>
+    `<button type="button" class="tierbtn" data-tier="${esc(k)}" aria-pressed="${filterTiers[k]}" title="${esc(CONF_META[k].label)}: ${esc(CONF_META[k].desc)}">${tierBadge(k)}<span class="tierbtn-label">${esc(CONF_META[k].label)}</span></button>`
+  ).join("");
+  el.querySelectorAll(".tierbtn").forEach(b=>{
+    b.addEventListener("click",()=>{
+      const k=b.dataset.tier;
+      filterTiers[k]=!filterTiers[k];
+      b.setAttribute("aria-pressed", String(filterTiers[k]));
+      renderActiveTab();
+    });
+  });
 }
 function buildLegendTop(){
   let html="";
@@ -708,10 +745,16 @@ function buildTabsAndPanels(){
         document.getElementById("tabbtn-"+o.id).setAttribute("aria-pressed", o.id===t.id);
         document.getElementById("p-"+o.id).setAttribute("data-active", o.id===t.id);
       });
-      document.getElementById("filterbar").style.display = t.filters ? "flex" : "none";
+      setRangesControl(t);
       renderActiveTab();
     });
   });
+}
+// Only the ranges control is per-tab now. Driven from the registry in BOTH the
+// click handler and init() — it used to be set only on click, so the first tab
+// was correct purely by luck of TABS order.
+function setRangesControl(tab){
+  document.getElementById("rangesControl").style.display = tab.ranges ? "flex" : "none";
 }
 function wireFilters(){
   document.getElementById("mtbOnly").addEventListener("change",e=>{
@@ -735,7 +778,9 @@ window.addEventListener("resize",()=>{
 function init(){
   applyTheme(DEFAULT_THEME);
   buildLegendTop();
+  buildTierFilters();
   buildTabsAndPanels();
+  setRangesControl(TABS.find(t=>t.id===activeTab));
   wireFilters();
   renderActiveTab();
 }
