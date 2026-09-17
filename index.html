@@ -392,7 +392,7 @@ a{color:var(--accent)}
 
 /* ── Tooltip ──────────────────────────────────────────────────────────────── */
 .tooltip{
-  position:fixed;max-width:270px;background:var(--tip-bg);color:var(--tip-ink);
+  position:fixed;max-width:min(270px, calc(100vw - 24px));background:var(--tip-bg);color:var(--tip-ink);
   font-size:.76rem;line-height:1.35;padding:9px 11px;border-radius:8px;
   pointer-events:none;z-index:50;display:none;box-shadow:0 6px 18px #00000030,var(--card-glow);
 }
@@ -848,18 +848,79 @@ function visibleSites(){
 
 /* ── tooltip (shared by both charts) ─────────────────────────────────────── */
 const tipEl=document.getElementById("tooltip");
-function showTip(evt,html){
+const TIP_PAD=12;   // gap between the pointer, or the anchored element, and the tooltip
+const TIP_EDGE=6;   // minimum gap kept between the tooltip and every screen edge
+
+/* Pass `anchorEl` and the tooltip attaches to that ELEMENT instead of to the
+   event point. That is what a tap wants: a tooltip placed at the touch point is
+   directly under the finger that asked for it. A mouse passes no anchor and the
+   tooltip follows the pointer as before. */
+function showTip(evt,html,anchorEl){
   tipEl.innerHTML=html;
   tipEl.style.display="block";
-  const pad=12;
-  let x=evt.clientX+pad, y=evt.clientY+pad;
-  // keep the tooltip on-screen near the right/bottom edges
   const tw=tipEl.offsetWidth||260, th=tipEl.offsetHeight||80;
-  if(x+tw>window.innerWidth-6) x=evt.clientX-tw-pad;
-  if(y+th>window.innerHeight-6) y=evt.clientY-th-pad;
+  const vw=window.innerWidth, vh=window.innerHeight;
+  let x,y;
+  if(anchorEl){
+    const r=anchorEl.getBoundingClientRect();
+    x=r.left+r.width/2-tw/2;
+    y=r.top-th-TIP_PAD;
+    if(y<TIP_EDGE) y=r.bottom+TIP_PAD;   // no room above the bar — sit below it
+  } else {
+    x=evt.clientX+TIP_PAD; y=evt.clientY+TIP_PAD;
+    if(x+tw>vw-TIP_EDGE) x=evt.clientX-tw-TIP_PAD;   // flip to the other side
+    if(y+th>vh-TIP_EDGE) y=evt.clientY-th-TIP_PAD;
+  }
+  /* CLAMP LAST, on BOTH axes. The flips above fix the right and bottom edges and
+     then walk straight off the left and top ones. Measured: on a 375px screen a
+     270px tooltip flips left for any tap past x=87 — 52% of the width — and
+     lands at x=-175, two thirds of it off the screen with the text sheared
+     mid-word. Flipping without clamping is only safe while the viewport is much
+     wider than the tooltip, which stopped being true the moment a phone opened it. */
+  x=Math.max(TIP_EDGE, Math.min(x, vw-tw-TIP_EDGE));
+  y=Math.max(TIP_EDGE, Math.min(y, vh-th-TIP_EDGE));
   tipEl.style.left=x+"px"; tipEl.style.top=y+"px";
 }
 function hideTip(){ tipEl.style.display="none"; }
+
+/* ==== wireTipTarget — the ONE place a tooltip trigger is wired. ==============
+   The bars and the range dots carried identical three-listener blocks, so the
+   touch bug below existed in two places and had to be found twice.
+
+   THE TRAP: a browser synthesizes compatibility MOUSE events after a tap. The
+   real order, captured from a tap on a bar, is
+
+       pointerdown → touchstart → touchend → mousemove → click → mouseleave
+
+   so the old `mouseleave → hideTip` fired immediately after the click that had
+   just shown the tooltip, and undid it. On a phone the tooltip never appeared at
+   all, which silently made every citation and caveat unreachable from both
+   charts. Nothing here listens for mouseleave, and nothing should.
+
+   Hover uses POINTER events gated on pointerType, which the synthesized mouse
+   events cannot reach. The tap path reads the type from `pointerdown` rather
+   than from the click, because a click is not a PointerEvent in every browser
+   but pointerdown always precedes it and always carries the type.
+   ============================================================================ */
+function wireTipTarget(el, site, which){
+  const html=()=>siteTipHtml(site,which);
+  let lastPointer="mouse";   // a click with no pointerdown before it is not a tap
+  el.addEventListener("pointerdown", e=>{ lastPointer=e.pointerType; });
+  el.addEventListener("pointermove", e=>{ if(e.pointerType==="mouse") showTip(e,html()); });
+  el.addEventListener("pointerleave", e=>{ if(e.pointerType==="mouse") hideTip(); });
+  el.addEventListener("click", e=>{
+    if(lastPointer==="mouse") return;    // the mouse already has it from pointermove
+    showTip(e, html(), el);              // anchor to the bar, not to the fingertip
+  });
+}
+
+/* Dismissal. A mouse leaves; a finger never does, so without these two the
+   tooltip would stay up for the rest of the session — and being position:fixed,
+   it would float over the page as you scrolled away from the bar that opened it. */
+document.addEventListener("click", e=>{
+  if(!(e.target.closest && e.target.closest(".barfill,.rangedot"))) hideTip();
+});
+window.addEventListener("scroll", hideTip, {passive:true});
 function siteTipHtml(s,which){
   const val = which==="nl" ? s.nl : s.lo;
   const hi  = which==="nl" ? s.nlHi : s.loHi;
@@ -922,11 +983,7 @@ function barLine(label,s,key,cls){
 }
 function wireBarEvents(container){
   container.querySelectorAll(".barfill").forEach(el=>{
-    const site=SITES.find(x=>x.id===el.dataset.site);
-    const which=el.dataset.which;
-    el.addEventListener("mousemove",e=>showTip(e,siteTipHtml(site,which)));
-    el.addEventListener("mouseleave",hideTip);
-    el.addEventListener("click",e=>showTip(e,siteTipHtml(site,which))); // tap support
+    wireTipTarget(el, SITES.find(x=>x.id===el.dataset.site), el.dataset.which);
   });
 }
 
@@ -994,11 +1051,7 @@ function renderRange(container){
     ? `<div class="rangewrap">${svg}<p class="rangecap">Log-scale axis — values span roughly $3 to over $600, more than two orders of magnitude. Each dot is one reported figure exactly as its source stated it (day, night, trip, or visit — hover or tap for which). A short line marks a reported range.</p></div>`
     : `<p class="nodata">No sites match the current filters.</p>`;
   container.querySelectorAll(".rangedot").forEach(el=>{
-    const site=SITES.find(x=>x.id===el.dataset.site);
-    const which=el.dataset.which;
-    el.addEventListener("mousemove",e=>showTip(e,siteTipHtml(site,which)));
-    el.addEventListener("mouseleave",hideTip);
-    el.addEventListener("click",e=>showTip(e,siteTipHtml(site,which)));
+    wireTipTarget(el, SITES.find(x=>x.id===el.dataset.site), el.dataset.which);
   });
 }
 function rangeDotSvg(s,which,val,x,y,color,isHiEnd){
