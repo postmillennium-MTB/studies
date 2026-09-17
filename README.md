@@ -12,7 +12,7 @@ Share button all point at.
 
 ## What this tool does
 
-Puts 21 site-level spending figures from 16 published studies side by side, without
+Puts 20 site-level spending figures from 16 published studies side by side, without
 smoothing over the three things that make them hard to compare:
 
 1. **They measure different units.** Some report per day, some per night, some per
@@ -27,7 +27,7 @@ smoothing over the three things that make them hard to compare:
 
 | Control | Effect |
 |---|---|
-| **MTB-specific studies only** | Hides the 6 general-cycling / paved-trail comparison entries |
+| **MTB-specific studies only** | Hides the 5 general-cycling / paved-trail comparison entries |
 | **Show reported ranges** | Draws the high bound where a source gave a range instead of one number |
 | **By Site** tab | Paired non-local / local bars, one row per site, shared linear $ axis |
 | **Range (all studies)** tab | Log-scale strip plot of every reported figure |
@@ -77,7 +77,7 @@ Every row carries a `conf` tier. This is an honesty mechanism, not cosmetic meta
 |---|---|---|
 | **V** — Verified | A primary study's own direct rider survey | 6 |
 | **M** — Medium | A blended/synthesis figure across trails, or reached only through a secondary compilation whose original study wasn't independently reviewed | 10 |
-| **L** — Low | Borrowed from an unrelated benchmark, a heavy generalizing assumption, a proxy not specific to mountain biking, or a figure that could not be traced back to the source cited beside it | 5 |
+| **L** — Low | Borrowed from an unrelated benchmark, a heavy generalizing assumption, a proxy not specific to mountain biking, or a figure that could not be traced back to the source cited beside it | 4 |
 
 The majority of this dataset is **Medium**, largely because the TPL Green Paper (2025)
 appendix is the only route to several site figures and those original reports have not
@@ -123,12 +123,16 @@ as of when — year-of-study and present-day rates answer different questions.
 
 Named in the Sources tab, with reasons: Marquette MI (qualitative, no spending survey),
 Iowa 2025 (commuting focus, no isolated out-of-state MTB figure), Tasmania (relative
-figure only, in AUD), and the TPL Green Paper's own Coldwater appendix entry (could not
-be traced into the underlying Boozer et al. 2012 text). A gap beats a guess.
+figure only), the TPL Green Paper's own Coldwater appendix entry (could not be traced
+into the underlying Boozer et al. 2012 text), and **two of the three Pikes Peak figures**
+— the $250 overnight, which is a year-2000 Colorado *statewide* benchmark
+inflation-adjusted fourteen years, and the $3 resident figure, which is amortized bike
+depreciation rather than trip spending. Only the $110 day-trip figure survives from that
+study, because it is the one with a local survey behind it. A gap beats a guess.
 
 ## What this tool does not do
 
-- **It does not tell you what a rider will spend at your trail.** These are 21 figures
+- **It does not tell you what a rider will spend at your trail.** These are 20 figures
   from other places, in other years, measured different ways.
 - **It does not adjust for inflation.** Figures are nominal, as published, 2012–2023.
 - **It does not normalize units**, and resists doing so. Forcing everything to "per day"

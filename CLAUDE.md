@@ -244,18 +244,21 @@ the sessions that built this could not open external PDFs.
 - **Zero Wayback snapshots exist.** Every link is a live publisher URL carrying rot
   risk. `archiveUrl` / `origArchiveUrl` are wired and take precedence once populated.
 - **Three rows unlinked:** `central-ohio`, `james-river`, `bentonville`.
-  18 of 21 linked. Tiers now 6 V / 10 M / 5 L.
-- **Pikes Peak (Steer Davies Gleave for PPACG/TOSC) has been read against its
-  source.** Both rows are linked, and the existing "Table 5.1 p.19" citation was
-  correct — note the report's own contents page misnumbers its tables by one
-  section, listing that table as 4.1. The derivations in §5.3–5.4 p.18 change what
-  two of the three figures are: the $250 overnight is CRESP's 2000 Colorado
-  STATEWIDE $179/night inflation-adjusted to 2014, so it was re-tiered M→L; the
-  $110 day-trip has genuine local primary data behind it (a survey of tour company
-  prices, not of riders) and stays M; and the $3 resident figure is amortized
-  equipment cost — a $540 bike over 10 years plus clothing and servicing — not trip
-  spending at all, which makes it a different quantity from every other Local value
-  in the table.
+  17 of 20 linked. Tiers 6 V / 10 M / 4 L. 15 MTB-specific, 5 general-cycling.
+- **Pikes Peak: only the $110 day-trip figure is kept.** The Steer Davies Gleave
+  report for PPACG/TOSC was read against its source; the existing "Table 5.1 p.19"
+  citation was correct, though the report's own contents page misnumbers its tables
+  by one section. All three figures in that table were confirmed, and two were then
+  deliberately dropped to `EXCLUSIONS` rather than kept at a low tier:
+  the **$250 overnight** is CRESP's year-2000 Colorado *statewide* $179/night
+  inflation-adjusted fourteen years, so it measures nothing in the region; and the
+  **$3 resident** figure is amortized equipment cost (a $540 bike over ten years,
+  plus clothing and servicing), not trip spending, which makes it a different
+  quantity from every other Local value and an invitation to a comparison it cannot
+  support. The surviving **$110** rests on the authors' own survey of local tour
+  companies, corroborated independently by the CRESP conversion of $79/day — two
+  routes to one number. It stays `M`, not `V`, because it surveys business prices
+  rather than riders.
 
 **Build**
 
