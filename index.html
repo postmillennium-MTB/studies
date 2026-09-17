@@ -820,13 +820,16 @@ function tierBadge(tier){
 // and it shows the document as it read when the figure was pulled. Only http(s)
 // renders; any other scheme (a typo, a pasted "javascript:") degrades to plain
 // text rather than emitting an anchor nobody vetted.
-function linkedText(o, text, icon){
+function linkedText(o, text, icon, srLabel){
   const pick = [o.archiveUrl, o.url].find(u => typeof u==="string" && /^https?:\/\//i.test(u));
   if(!pick) return esc(text);
   const archived = pick===o.archiveUrl;
-  const label = archived
+  // srLabel overrides the default sr-only text — used for the "original study"
+  // link so a screen reader gets the same "not independently reviewed" caveat
+  // that sighted users get only from the differing icon.
+  const label = srLabel || (archived
     ? "Opens an archived snapshot of the source document in a new tab"
-    : "Opens the source document on the publisher's site, in a new tab";
+    : "Opens the source document on the publisher's site, in a new tab");
   // Disclose the snapshot rather than passing it off as the live document.
   const flag = archived ? `<span class="archflag" title="Wayback Machine snapshot">archived</span>` : "";
   return `<a class="srclink" href="${esc(pick)}" target="_blank" rel="noopener noreferrer" title="${esc(label)}">${esc(text)}<span class="srclink-icon" aria-hidden="true">${icon||SRC_LINK_ICON}</span><span class="sr-only"> (${esc(label)})</span></a>${flag}`;
@@ -837,7 +840,8 @@ function srcCell(s){
   // scrutiny, so they must not read as interchangeable.
   const orig={url:s.origUrl, archiveUrl:s.origArchiveUrl};
   const hasOrig=[orig.archiveUrl,orig.url].some(u=>typeof u==="string"&&/^https?:\/\//i.test(u));
-  return linkedText(s,s.src) + (hasOrig ? ` <span class="origlink">${linkedText(orig,"original study",ORIG_LINK_ICON)}</span>` : "");
+  const origLabel="Opens the underlying study cited by the compilation, not independently reviewed";
+  return linkedText(s,s.src) + (hasOrig ? ` <span class="origlink">${linkedText(orig,"original study",ORIG_LINK_ICON,origLabel)}</span>` : "");
 }
 function visibleSites(){
   // !==false, not ===true: a row whose conf is not in CONF_META has no toggle,
