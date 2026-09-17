@@ -243,8 +243,19 @@ the sessions that built this could not open external PDFs.
   divided by CAM guest nights would settle it; that check has not been run.
 - **Zero Wayback snapshots exist.** Every link is a live publisher URL carrying rot
   risk. `archiveUrl` / `origArchiveUrl` are wired and take precedence once populated.
-- **Five rows unlinked:** `pikes-overnight`, `pikes-daytrip`, `central-ohio`,
-  `james-river`, `bentonville`.
+- **Three rows unlinked:** `central-ohio`, `james-river`, `bentonville`.
+  18 of 21 linked. Tiers now 6 V / 10 M / 5 L.
+- **Pikes Peak (Steer Davies Gleave for PPACG/TOSC) has been read against its
+  source.** Both rows are linked, and the existing "Table 5.1 p.19" citation was
+  correct — note the report's own contents page misnumbers its tables by one
+  section, listing that table as 4.1. The derivations in §5.3–5.4 p.18 change what
+  two of the three figures are: the $250 overnight is CRESP's 2000 Colorado
+  STATEWIDE $179/night inflation-adjusted to 2014, so it was re-tiered M→L; the
+  $110 day-trip has genuine local primary data behind it (a survey of tour company
+  prices, not of riders) and stays M; and the $3 resident figure is amortized
+  equipment cost — a $540 bike over 10 years plus clothing and servicing — not trip
+  spending at all, which makes it a different quantity from every other Local value
+  in the table.
 
 **Build**
 
