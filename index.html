@@ -195,6 +195,8 @@ a{color:var(--accent)}
 .srclink:hover{text-decoration:underline}
 .srclink:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
 .srclink-icon{display:inline-flex;vertical-align:-2px;margin-left:4px}
+.origlink{white-space:nowrap;margin-left:2px}
+.origlink .srclink{font-weight:600;font-size:.92em;opacity:.88}
 .archflag{display:inline-block;margin-left:5px;font-size:.62rem;font-weight:700;text-transform:uppercase;
   letter-spacing:.02em;color:var(--ink-soft);background:#00000010;border-radius:3px;padding:1px 4px;white-space:nowrap}
 /* Visually hidden but read aloud — the icon is decorative, so the "new tab"
@@ -279,6 +281,15 @@ footer a:hover{text-decoration:underline}
              has been verified. NEVER guess one. A row with no link at all
              renders plain text — a dead or wrong link is worse than no link,
              and this table is the thing a skeptic checks first.
+     origUrl / origArchiveUrl
+             for a row read out of a secondary compilation, the UNDERLYING
+             original study. Rendered as a second link with a DIFFERENT icon
+             (chain, not external-arrow) so the two-step provenance is visible
+             rather than implied: url is where the number was actually read,
+             origUrl is the study it came from that has NOT been independently
+             reviewed. Showing both is more transparent than either alone, and
+             the two must never look interchangeable — that difference in
+             scrutiny is the whole point.
      archiveUrl
              a Wayback Machine snapshot of that document, or null. PREFERRED
              over url when present, for two reasons: university extension PDFs
@@ -300,12 +311,12 @@ const SITES=[
 {id:"duluth-day",site:"Duluth Trails – Day-Trip Visitors",st:"MN",yr:2017,mtb:"y",unit:"trip",nl:48,lo:null,conf:"m",calc:true,src:"Savolt 2017 (Univ. of Minnesota Duluth, undergraduate Honors Capstone; faculty supervisor C. McIntosh), pp.13–14",url:"https://conservancy.umn.edu/items/ae2b41c8-92a4-4bde-9124-6ce2403e92a5",archiveUrl:null,note:"An undergraduate Honors Capstone, not a commissioned or peer-reviewed study — weigh it accordingly. Source reports $431.77/YEAR across 9 trips/year. $48/trip = 431.77 ÷ 9, Claude's division, not stated directly by the study."},
 {id:"duluth-overnight",site:"Duluth Trails – Overnight Visitors",st:"MN",yr:2017,mtb:"y",unit:"night",nl:79,lo:null,conf:"m",calc:true,src:"Savolt 2017 (Univ. of Minnesota Duluth, undergraduate Honors Capstone; faculty supervisor C. McIntosh), pp.14–15",url:"https://conservancy.umn.edu/items/ae2b41c8-92a4-4bde-9124-6ce2403e92a5",archiveUrl:null,note:"An undergraduate Honors Capstone, not a commissioned or peer-reviewed study — weigh it accordingly. Source reports $803.80/YEAR across 5.1 trips/year at ~2 nights/trip. $79/night ≈ 803.80 ÷ 5.1 ÷ 2, Claude's division. Locals reported $964.84/YEAR (mostly amortized bike purchases) — not shown here because a year isn't a comparable unit to a day or night."},
 {id:"keene",site:"Keene Trail Network (Goose Pond/Wheelock)",st:"NH",yr:2023,mtb:"y",unit:"visit",nl:106,nlHi:145,lo:null,conf:"l",calc:false,src:"Smith & O'Leary 2023 (UNH Extension), pp.6–7",url:null,archiveUrl:null,note:"The study explicitly could NOT split local vs. non-local spending, and describes Keene's rider base as overwhelmingly local. This figure blends both — treat it as a floor, not a genuine non-local estimate."},
-{id:"kingdom-trails",site:"Kingdom Trails",st:"VT",yr:2016,mtb:"y",unit:"visit",nl:176,nlHi:190,lo:null,conf:"m",calc:false,src:"Camoin Associates 2016 for the Vermont Trails & Greenways Council (a 4-organization study), via TPL Green Paper (2025) Appendix p.31 — original report not independently reviewed",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,note:null},
-{id:"camba",site:"Chequamegon Area Trails (CAMBA)",st:"WI",yr:2020,mtb:"y",unit:"day",nl:245.40,lo:null,conf:"l",calc:false,src:"Hadley & Trechter 2020 (UW–River Falls Survey Research Center), via TPL Green Paper (2025) Appendix p.33 — original report not independently reviewed",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,note:"PROVENANCE UNRESOLVED. The $245.40/day plotted here cannot be traced to the cited page: TPL's narrative (p.9) says $1,107/visit and its appendix table (p.33) says $1,017.18/visit, and neither reduces to $245.40 by any stated method. Tiered Low until the original Hadley & Trechter 2020 report is read directly. Treat as a placeholder, not a citation."},
-{id:"helena",site:"Mt. Ascension & Mt. Helena Trails",st:"MT",yr:2018,mtb:"y",unit:"day",nl:90,nlHi:111,lo:null,conf:"m",calc:false,src:"Sage & Nickerson 2018, via TPL Green Paper (2025) Appendix p.29 — original report not independently reviewed",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,note:null},
-{id:"gmug",site:"GMUG National Forests (4 areas)",st:"CO",yr:2018,mtb:"y",unit:"visit",nl:329,nlHi:617,lo:null,conf:"m",calc:false,src:"Maples & Bradley 2018, via TPL Green Paper (2025) Appendix pp.27–28 — original report not independently reviewed",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,note:"Range spans 4 sub-areas (Grand Junction, Crested Butte, West Slope, Ouray) — not one site's uncertainty band."},
-{id:"manti-lasal",site:"Manti-La Sal National Forest",st:"UT",yr:2022,mtb:"y",unit:"visit",nl:331.56,lo:null,conf:"m",calc:false,src:"Maples, Rehm & Bradley 2022, via TPL Green Paper (2025) Appendix p.32 — original report not independently reviewed",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,note:null},
-{id:"eastern-trail",site:"Eastern Trail (paved rail-trail)",st:"ME",yr:2018,mtb:"n",unit:"day",nl:242.35,lo:null,conf:"m",calc:false,src:"Eastern Trail Alliance 2018, via TPL Green Paper (2025) Appendix p.27",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,note:"Non-MTB comparison point: paved multi-use rail-trail, all trail users combined, not mountain bikers specifically."},
+{id:"kingdom-trails",site:"Kingdom Trails",st:"VT",yr:2016,mtb:"y",unit:"visit",nl:176,nlHi:190,lo:null,conf:"m",calc:false,src:"Camoin Associates 2016 for the Vermont Trails & Greenways Council (a 4-organization study), via TPL Green Paper (2025) Appendix p.31 — original report not independently reviewed",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,origUrl:"https://fpr.vermont.gov/sites/fpr/files/Recreation/Learn_More/Library/Final%20Report-%20Impact%20Analysis%20-%20VT%20Trails%20and%20Greenways.pdf",origArchiveUrl:null,note:null},
+{id:"camba",site:"Chequamegon Area Trails (CAMBA)",st:"WI",yr:2020,mtb:"y",unit:"day",nl:245.40,lo:null,conf:"l",calc:false,src:"Hadley & Trechter 2020 (UW–River Falls Survey Research Center), via TPL Green Paper (2025) Appendix p.33 — original report not independently reviewed",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,origUrl:"https://outdoorrecreation.wi.gov/Documents/Research%20Library%20Page%20files/Wisconsin/CAMBA%20Economic%20Impact%20&%20User%20Survey_2020.pdf",origArchiveUrl:null,note:"PROVENANCE UNRESOLVED. The $245.40/day plotted here cannot be traced to the cited page: TPL's narrative (p.9) says $1,107/visit and its appendix table (p.33) says $1,017.18/visit, and neither reduces to $245.40 by any stated method. Tiered Low until the original Hadley & Trechter 2020 report is read directly. Treat as a placeholder, not a citation."},
+{id:"helena",site:"Mt. Ascension & Mt. Helena Trails",st:"MT",yr:2018,mtb:"y",unit:"day",nl:90,nlHi:111,lo:null,conf:"m",calc:false,src:"Sage & Nickerson 2018, via TPL Green Paper (2025) Appendix p.29 — original report not independently reviewed",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,origUrl:"https://scholarworks.umt.edu/itrr_pubs/365/",origArchiveUrl:null,note:null},
+{id:"gmug",site:"GMUG National Forests (4 areas)",st:"CO",yr:2018,mtb:"y",unit:"visit",nl:329,nlHi:617,lo:null,conf:"m",calc:false,src:"Maples & Bradley 2018, via TPL Green Paper (2025) Appendix pp.27–28 — original report not independently reviewed",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,origUrl:"https://www.imba.com/sites/default/files/content/resources/2018-11/OA_GMUGNF_MtnBikingStudy2018.pdf",origArchiveUrl:null,note:"Range spans 4 sub-areas (Grand Junction, Crested Butte, West Slope, Ouray) — not one site's uncertainty band."},
+{id:"manti-lasal",site:"Manti-La Sal National Forest",st:"UT",yr:2022,mtb:"y",unit:"visit",nl:331.56,lo:null,conf:"m",calc:false,src:"Maples, Rehm & Bradley 2022, via TPL Green Paper (2025) Appendix p.32 — original report not independently reviewed",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,origUrl:"https://www.outdooralliance.org/manti-la-sal-economic-reports",origArchiveUrl:null,note:null},
+{id:"eastern-trail",site:"Eastern Trail (paved rail-trail)",st:"ME",yr:2018,mtb:"n",unit:"day",nl:242.35,lo:null,conf:"m",calc:false,src:"Eastern Trail Alliance 2018, via TPL Green Paper (2025) Appendix p.27",url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf",archiveUrl:null,origUrl:"https://www.easterntrail.org/the-economic-impact-of-the-eastern-trail/",origArchiveUrl:null,note:"Non-MTB comparison point: paved multi-use rail-trail, all trail users combined, not mountain bikers specifically."},
 {id:"pikes-overnight",site:"Pikes Peak Region – Non-Resident Overnight",st:"CO",yr:2014,mtb:"n",unit:"day",nl:250,lo:null,conf:"m",calc:false,src:"Steer Davies Gleave for PPACG/TOSC, ~2014–15, Table 5.1 p.19",url:null,archiveUrl:null,note:"General cycling (road + recreational), not MTB-specific. Included because Colorado Springs is the direct regional comparison market."},
 {id:"pikes-daytrip",site:"Pikes Peak Region – Non-Resident Day Trip",st:"CO",yr:2014,mtb:"n",unit:"day",nl:110,lo:3,conf:"m",calc:false,src:"Steer Davies Gleave for PPACG/TOSC, ~2014–15, Table 5.1 p.19",url:null,archiveUrl:null,note:"Local figure ($3/day) is general residential recreational cycling, not a trail-specific day visit."},
 {id:"central-ohio",site:"Central Ohio Greenways (paved)",st:"OH",yr:2015,mtb:"n",unit:"visit",nl:null,lo:3,loHi:22,conf:"v",calc:false,src:"Lindsey et al. 2015 (Univ. of Minnesota / MORPC), pp.19–20",url:null,archiveUrl:null,note:"Paved multi-use commuter/recreation trail network, not MTB singletrack. Included only to show how low incidental local spending is without a tourism draw. No non-local figure was measured."},
@@ -333,6 +344,7 @@ const UNIT_META={day:"/day",night:"/night",trip:"/trip",visit:"/visit"};
 
 /* ==== SRC_LINK_ICON — external-link glyph shown beside any source carrying a
    url. Inline SVG: no icon font, no CDN, nothing to fail offline. ============ */
+const ORIG_LINK_ICON=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
 const SRC_LINK_ICON=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg>`;
 
 /* ==== EXCLUSIONS — studies that were looked at and deliberately left out,
@@ -430,7 +442,7 @@ function tierBadge(tier){
 // and it shows the document as it read when the figure was pulled. Only http(s)
 // renders; any other scheme (a typo, a pasted "javascript:") degrades to plain
 // text rather than emitting an anchor nobody vetted.
-function linkedText(o, text){
+function linkedText(o, text, icon){
   const pick = [o.archiveUrl, o.url].find(u => typeof u==="string" && /^https?:\/\//i.test(u));
   if(!pick) return esc(text);
   const archived = pick===o.archiveUrl;
@@ -439,9 +451,16 @@ function linkedText(o, text){
     : "Opens the source document on the publisher's site, in a new tab";
   // Disclose the snapshot rather than passing it off as the live document.
   const flag = archived ? `<span class="archflag" title="Wayback Machine snapshot">archived</span>` : "";
-  return `<a class="srclink" href="${esc(pick)}" target="_blank" rel="noopener noreferrer" title="${esc(label)}">${esc(text)}<span class="srclink-icon" aria-hidden="true">${SRC_LINK_ICON}</span><span class="sr-only"> (${esc(label)})</span></a>${flag}`;
+  return `<a class="srclink" href="${esc(pick)}" target="_blank" rel="noopener noreferrer" title="${esc(label)}">${esc(text)}<span class="srclink-icon" aria-hidden="true">${icon||SRC_LINK_ICON}</span><span class="sr-only"> (${esc(label)})</span></a>${flag}`;
 }
-function srcCell(s){ return linkedText(s, s.src); }
+function srcCell(s){
+  // A second link for rows whose figure was read out of a compilation. It uses
+  // a DIFFERENT glyph on purpose: these two documents were not given the same
+  // scrutiny, so they must not read as interchangeable.
+  const orig={url:s.origUrl, archiveUrl:s.origArchiveUrl};
+  const hasOrig=[orig.archiveUrl,orig.url].some(u=>typeof u==="string"&&/^https?:\/\//i.test(u));
+  return linkedText(s,s.src) + (hasOrig ? ` <span class="origlink">${linkedText(orig,"original study",ORIG_LINK_ICON)}</span>` : "");
+}
 function visibleSites(){
   return SITES.filter(s=> filterMtbOnly ? s.mtb==="y" : true);
 }
