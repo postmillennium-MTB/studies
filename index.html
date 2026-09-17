@@ -332,6 +332,30 @@ const UNIT_META={day:"/day",night:"/night",trip:"/trip",visit:"/visit"};
    url. Inline SVG: no icon font, no CDN, nothing to fail offline. ============ */
 const SRC_LINK_ICON=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg>`;
 
+/* ==== EXCLUSIONS — studies that were looked at and deliberately left out,
+   with the reason. A registry, not hard-coded markup, so adding an exclusion
+   is a one-line edit like adding a site.
+     what        short bold label (the place, or the specific figure)
+     cite        the source being excluded, shown in parentheses
+     why         the reason it is not in SITES — the whole point of the section
+     url         publisher link, or null. Same rule as SITES: never guess one.
+     archiveUrl  Wayback snapshot, preferred over url when present.
+   ============================================================================ */
+const EXCLUSIONS=[
+  {what:"Marquette, MI", cite:"Jordan 2015, MSU EDA REI",
+   why:"Qualitative ecotourism/sustainability paper; no spending survey.",
+   url:null, archiveUrl:null},
+  {what:"Iowa", cite:"2025 statewide bicycling study",
+   why:"Focused on commuting and in-state riders; no isolated out-of-state MTB tourist day-spend figure.",
+   url:null, archiveUrl:null},
+  {what:"Tasmania", cite:"MTB Network Tasmania, 2026",
+   why:"Reports MTB visitors spend \"26% more per trip\" than other tourists \u2014 a relative figure only, in AUD, with no absolute per-day number.",
+   url:null, archiveUrl:null},
+  {what:"TPL Green Paper's Coldwater appendix entry", cite:"$185.51 non-local / $39.75 local",
+   why:"Could not be traced back into the underlying Boozer & Self 2012 text, which only supports the two values shown for Coldwater above. Left out rather than guessed at.",
+   url:null, archiveUrl:null},
+];
+
 /* ==== THEMES REGISTRY — the single source of truth for every color theme.
    TO ADD A THEME: add ONE entry here, then add a matching CSS [data-theme]
    block above. Only "ledger" ships this pass; kept as a registry (not a single
@@ -398,21 +422,23 @@ function tierBadge(tier){
   const letter=known?String(tier).toUpperCase():"?";
   return `<span class="tierbadge" style="background:${t.color}" title="${esc(t.label)}: ${esc(t.desc)}">${esc(letter)}</span>`;
 }
-function srcCell(s){
-  // Prefer the archive snapshot: it does not rot, and it shows the document as
-  // it read when the figure was pulled. Falls back to the publisher's own link.
-  // Only http(s) renders — any other scheme (a typo, a pasted "javascript:")
-  // degrades to plain citation text rather than emitting an anchor nobody vetted.
-  const pick = [s.archiveUrl, s.url].find(u => typeof u==="string" && /^https?:\/\//i.test(u));
-  if(!pick) return esc(s.src);
-  const archived = pick===s.archiveUrl;
+// Shared by the source table AND the exclusions list — both link the same way,
+// so the rule lives in one place. Prefers the archive snapshot: it does not rot,
+// and it shows the document as it read when the figure was pulled. Only http(s)
+// renders; any other scheme (a typo, a pasted "javascript:") degrades to plain
+// text rather than emitting an anchor nobody vetted.
+function linkedText(o, text){
+  const pick = [o.archiveUrl, o.url].find(u => typeof u==="string" && /^https?:\/\//i.test(u));
+  if(!pick) return esc(text);
+  const archived = pick===o.archiveUrl;
   const label = archived
     ? "Opens an archived snapshot of the source document in a new tab"
     : "Opens the source document on the publisher's site, in a new tab";
   // Disclose the snapshot rather than passing it off as the live document.
   const flag = archived ? `<span class="archflag" title="Wayback Machine snapshot">archived</span>` : "";
-  return `<a class="srclink" href="${esc(pick)}" target="_blank" rel="noopener noreferrer" title="${esc(label)}">${esc(s.src)}<span class="srclink-icon" aria-hidden="true">${SRC_LINK_ICON}</span><span class="sr-only"> (${esc(label)})</span></a>${flag}`;
+  return `<a class="srclink" href="${esc(pick)}" target="_blank" rel="noopener noreferrer" title="${esc(label)}">${esc(text)}<span class="srclink-icon" aria-hidden="true">${SRC_LINK_ICON}</span><span class="sr-only"> (${esc(label)})</span></a>${flag}`;
 }
+function srcCell(s){ return linkedText(s, s.src); }
 function visibleSites(){
   return SITES.filter(s=> filterMtbOnly ? s.mtb==="y" : true);
 }
@@ -587,6 +613,10 @@ function renderSources(container){
     const t=CONF_META[k];
     tierRows+=`<div class="legend item">${tierBadge(k)} <b>${esc(t.label)}</b> — ${esc(t.desc)}</div>`;
   });
+  let exclusionRows="";
+  EXCLUSIONS.forEach(x=>{
+    exclusionRows+=`<li><b>${esc(x.what)}</b> (${linkedText(x,x.cite)}) — ${esc(x.why)}</li>`;
+  });
   let srcRows="";
   SITES.forEach(s=>{
     srcRows+=`<tr>
@@ -607,12 +637,7 @@ function renderSources(container){
     </div>
     <div class="srcnote">
       <h3>Excluded — no usable day/trip figure found</h3>
-      <ul class="excludelist">
-        <li><b>Marquette, MI</b> (Jordan 2015, MSU EDA REI) — qualitative ecotourism/sustainability paper; no spending survey.</li>
-        <li><b>Iowa</b> (2025 statewide bicycling study) — focused on commuting and in-state riders; no isolated out-of-state MTB tourist day-spend figure.</li>
-        <li><b>Tasmania</b> (MTB Network Tasmania, 2026) — reports MTB visitors spend "26% more per trip" than other tourists, a relative figure only, in AUD, with no absolute per-day number.</li>
-        <li><b>TPL Green Paper's Coldwater appendix entry</b> ($185.51 non-local / $39.75 local) — could not be traced back into the underlying Boozer et al. 2012 text, which only supports the two values shown for Coldwater above. Left out rather than guessed at.</li>
-      </ul>
+      <ul class="excludelist">${exclusionRows}</ul>
     </div>
     <div class="srcnote">
       <h3>Full source table</h3>
