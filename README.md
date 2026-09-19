@@ -12,7 +12,7 @@ Share button all point at.
 
 ## What this tool does
 
-Puts 21 site-level spending figures from 16 published studies side by side, without
+Puts 21 site-level spending figures from 17 published studies side by side, without
 smoothing over the three things that make them hard to compare:
 
 1. **They measure different units.** Some report per day, some per night, some per
@@ -76,8 +76,8 @@ Every row carries a `conf` tier. This is an honesty mechanism, not cosmetic meta
 | Tier | Meaning | Count |
 |---|---|---|
 | **V** — Verified | A primary study's own direct rider survey | 6 |
-| **M** — Medium | A blended/synthesis figure across trails, or reached only through a secondary compilation whose original study wasn't independently reviewed | 12 |
-| **L** — Low | Borrowed from an unrelated benchmark, a heavy generalizing assumption, a proxy not specific to mountain biking, or a figure that could not be traced back to the source cited beside it | 3 |
+| **M** — Medium | A blended/synthesis figure across trails, or reached only through a secondary compilation whose original study wasn't independently reviewed | 11 |
+| **L** — Low | Borrowed from an unrelated benchmark, a heavy generalizing assumption, a proxy not specific to mountain biking, or a figure that could not be traced back to the source cited beside it | 4 |
 
 The majority of this dataset is **Medium**, largely because the TPL Green Paper (2025)
 appendix is the only route to several site figures and those original reports have not
