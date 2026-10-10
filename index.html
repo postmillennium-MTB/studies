@@ -451,7 +451,7 @@ a{color:var(--accent)}
 }
 .share-wrap.flash .share-status{opacity:1}
 @media(prefers-reduced-motion:reduce){
-  .share-btn,.share-status,.filterbar.touched .chev,.storybtn .chev{transition:none}
+  .share-btn,.share-status,.filterbar.touched .chev,.storybtn .chev,.srcfold>summary::after{transition:none}
 }
 
 /* ── Masthead ─────────────────────────────────────────────────────────────── */
@@ -730,6 +730,16 @@ a{color:var(--accent)}
 .notedetails p{margin:0 0 6px;line-height:1.5;color:var(--ink)}
 .srcfold>summary{cursor:pointer;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:40px;font-weight:700;font-size:.94rem}
 .srcfold[open]>summary{margin-bottom:8px}
+/* display:flex on the summary above removes the browser's own disclosure triangle,
+   so the fold draws its own chevron: pointing down shut, up open, pushed to the
+   right edge. Without it a folded heading looks like a plain heading and nothing
+   says it can be opened. Print hides it (see @media print). */
+.srcfold>summary::after{
+  content:"";flex:none;margin-left:auto;width:8px;height:8px;
+  border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:translateY(-2px) rotate(45deg);transition:transform .2s;
+}
+.srcfold[open]>summary::after{transform:translateY(2px) rotate(-135deg)}
 /* The place story: a chevron button in the Site cell and a whole extra row under
    its study. [hidden] needs its own rule here for the same reason as .filterbody:
    the row's display (block on a phone, table-row on desktop) is set by .srctable
@@ -994,6 +1004,7 @@ footer a:hover{text-decoration-thickness:2px}
   .srctable tr:last-child{border-bottom:0}
   .srcnote,.srcfold{break-inside:auto}
   .srcfold>summary{break-after:avoid}
+  .srcfold>summary::after{display:none}
   .notedetails{flex-basis:auto}
   /* A link on paper is a dead underline. Print where it points, small, breakable
      anywhere so a long address wraps inside its column instead of widening the
@@ -2107,10 +2118,10 @@ function renderSources(container){
     </tr>${storyRow(s)}`;
   });
   container.innerHTML=`
-    <div class="srcnote">
-      <h3>Why units aren't normalized</h3>
+    <details class="srcnote srcfold">
+      <summary>Why units aren't normalized</summary>
       <p style="margin:0">Every figure is shown exactly as its source reported it — per day, per night, per trip, or per visit — rather than converted to one common unit. Forcing everything into "per day" would require assuming an average trip length for studies that didn't report one, which would quietly manufacture precision the sources don't have. Where a conversion IS shown (marked <span class="calcflag">calc</span>), the note states the arithmetic and the reason for it, and uses only numbers the source itself printed.</p>
-    </div>
+    </details>
     <div class="srcnote">
       <h3>Confidence tiers — how well-sourced each figure is</h3>
       <div style="display:flex;flex-direction:column;gap:6px">${tierRows}</div>
