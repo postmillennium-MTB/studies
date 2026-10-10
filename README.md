@@ -27,7 +27,7 @@ smoothing over the three things that make them hard to compare:
 
 | Control | Effect |
 |---|---|
-| **Filters** (button) | Folds the controls below away. Shut by default on a phone, open from 640px up. The line under it always states what is filtered: *Showing 13 of 21 · MTB only · tiers V, M* |
+| **Filters** (button) | Folds the controls below away. Shut by default on a phone, open from 640px up. The line under it always states what is filtered: *Showing 14 of 21 · MTB only · tiers V, M* |
 | **MTB studies only** | Hides the 6 general-cycling / paved-trail comparison entries |
 | **Show ranges** | Draws the high bound where a source gave a range instead of one number |
 | **Show study names** (Range view only) | Unticked by default: a Range row shows only its unit until you point at it. Ticked, every study name is printed at once |
@@ -83,9 +83,9 @@ the green was the Local bar's green.
 
 | Tier | Meaning | Count |
 |---|---|---|
-| **V** — Verified | A primary study's own direct rider survey | 6 |
+| **V** — Verified | A primary study's own direct rider survey | 7 |
 | **M** — Medium | A blended/synthesis figure across trails, or reached only through a secondary compilation whose original study wasn't independently reviewed | 11 |
-| **L** — Low | Borrowed from an unrelated benchmark, a heavy generalizing assumption, a proxy not specific to mountain biking, or a figure that could not be traced back to the source cited beside it | 4 |
+| **L** — Low | Borrowed from an unrelated benchmark, a heavy generalizing assumption, a proxy not specific to mountain biking, or a figure that could not be traced back to the source cited beside it | 3 |
 
 The majority of this dataset is **Medium**, largely because the TPL Green Paper (2025)
 appendix is the only route to several site figures and those original reports have not
@@ -99,11 +99,13 @@ numbers, the field is left empty rather than estimated.
 
 ## Known open items
 
-- **Chequamegon / CAMBA ($245.40/day)** is tiered **Low** with `PROVENANCE UNRESOLVED`
-  in its note. The figure cannot be reconciled to either number on the cited TPL page
-  ($1,107/visit narrative, $1,017.18/visit appendix). It stays visible and flagged
-  rather than quietly dropped or quietly kept. Resolving it requires reading Hadley &
-  Trechter 2020 directly.
+- **Chequamegon / CAMBA is resolved.** It used to be tiered **Low** with
+  `PROVENANCE UNRESOLVED`: the $245.40/day read through the TPL Green Paper could not be
+  traced to anything, and it turns out that figure, and the Green Paper's two per-visit
+  numbers, appear nowhere in the original report. The row now comes from Hadley &
+  Trechter 2020 itself (Table 1-3, p.16): **$200/day**, a mean, *expected* spending by
+  non-local visitors, which the report's authors derived by dividing average trip
+  spending by days in the area (nights plus one). The row is **Verified**.
 - **`yr` is publication year.** Four rows previously carried a different year than the
   citation beside them and were corrected to the cited year (WVU ×2 → 2019,
   Manti-La Sal → 2022, Bentonville → 2023). If any of those were deliberately recording
@@ -150,7 +152,7 @@ be traced into the underlying Boozer et al. 2012 text). A gap beats a guess.
 The [ROI Calculator](https://postmillenniumrenaissance.com/roi/) takes a per-visitor
 spending assumption as an input. This tool is the evidence base behind that number.
 For reference, the median of the MTB-specific *per-day* non-local figures here is
-**$143.27** (n=5, range $90–$245.40).
+**$143.27** (n=5, range $90–$200).
 
 ## Files in this repository
 
@@ -183,5 +185,4 @@ Underlying figures belong to their cited authors and publishers.
 
 ## Contact and corrections
 
-Corrections are welcome and wanted — particularly on the CAMBA provenance item above.
-Open an issue on this repository.
+Corrections are welcome and wanted. Open an issue on this repository.
