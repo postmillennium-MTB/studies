@@ -556,6 +556,17 @@ a{color:var(--accent)}
 .legend .legend-label{font-weight:700;color:var(--ink)}
 .tierrow{display:flex;align-items:flex-start;gap:8px;line-height:1.45}
 .tierrow .tierbadge{margin-top:1px}
+/* On the Sources tab each tier row is a toggle, the same switch as the chips in the
+   Filters bar (one shared filterTiers). Off is never shown by dimming alone: the
+   label is struck through and aria-pressed carries it for assistive tech. */
+button.tierrow{
+  appearance:none;cursor:pointer;font:inherit;color:var(--ink);text-align:left;width:100%;
+  min-height:40px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);
+}
+button.tierrow:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.tierrow[aria-pressed="false"]{opacity:.55;background:transparent}
+button.tierrow[aria-pressed="false"] b{text-decoration:line-through}
+.tierhint{margin:0 0 8px;font-size:.8rem;line-height:1.45;color:var(--ink-soft)}
 .swatch{width:13px;height:13px;border-radius:3px;display:inline-block}
 /* The hatched swatch is the legend's key to the reported-range extension. It is
    built from the same two stripe colors as .barfill.range, so the key and the
@@ -1005,6 +1016,9 @@ footer a:hover{text-decoration-thickness:2px}
   .srcnote,.srcfold{break-inside:auto}
   .srcfold>summary{break-after:avoid}
   .srcfold>summary::after{display:none}
+  button.tierrow{border:0;padding:0;min-height:0;background:none;opacity:1}
+  button.tierrow[aria-pressed="false"]{opacity:.6}
+  .tierhint{display:none}
   .notedetails{flex-basis:auto}
   /* A link on paper is a dead underline. Print where it points, small, breakable
      anywhere so a long address wraps inside its column instead of widening the
@@ -1586,6 +1600,7 @@ const UI_TEXT={
   storyLinks:"Where it comes from:",
   showNote:"Show note",
   showAllNotes:"Show all notes", hideAllNotes:"Hide all notes",
+  tiersHint:"Tap a tier to show or hide its studies in the table and in the charts. The same switches are in Filters.",
 };
 
 /* ==== LEGEND_KEY — the legend entries that explain a mark rather than a
@@ -2074,10 +2089,14 @@ function noteCell(s){
     : "";
 }
 function renderSources(container){
+  // Toggling a tier re-renders this whole tab, which would shut every fold the
+  // reader had opened — including the one they just clicked inside. Remember which
+  // top-level folds were open (by position) and put them back after the rebuild.
+  const foldsOpen=[...container.querySelectorAll(":scope > details")].map(d=>d.open);
   let tierRows="";
   Object.keys(CONF_META).forEach(k=>{
     const t=CONF_META[k];
-    tierRows+=`<div class="tierrow">${tierBadge(k)}<span><b>${esc(t.label)}</b> — ${esc(t.desc)}</span></div>`;
+    tierRows+=`<button type="button" class="tierrow" data-tier="${esc(k)}" aria-pressed="${filterTiers[k]!==false}">${tierBadge(k)}<span><b>${esc(t.label)}</b> — ${esc(t.desc)}</span></button>`;
   });
   let exclusionRows="";
   EXCLUSIONS.forEach(x=>{
@@ -2122,10 +2141,11 @@ function renderSources(container){
       <summary>Why units aren't normalized</summary>
       <p style="margin:0">Every figure is shown exactly as its source reported it — per day, per night, per trip, or per visit — rather than converted to one common unit. Forcing everything into "per day" would require assuming an average trip length for studies that didn't report one, which would quietly manufacture precision the sources don't have. Where a conversion IS shown (marked <span class="calcflag">calc</span>), the note states the arithmetic and the reason for it, and uses only numbers the source itself printed.</p>
     </details>
-    <div class="srcnote">
-      <h3>Confidence tiers — how well-sourced each figure is</h3>
+    <details class="srcnote srcfold">
+      <summary>Confidence tiers — how well-sourced each figure is</summary>
+      <p class="tierhint">${esc(UI_TEXT.tiersHint)}</p>
       <div style="display:flex;flex-direction:column;gap:6px">${tierRows}</div>
-    </div>
+    </details>
     <div class="srcnote">
       <div class="srchead">
         <h3>Source table <span class="srccount">— showing ${srcSites.length} of ${SITES.length} studies</span></h3>
@@ -2163,6 +2183,10 @@ function renderSources(container){
       <ul class="excludelist">${exclusionRows}</ul>
     </details>
   `;
+  container.querySelectorAll(":scope > details").forEach((d,i)=>{ if(foldsOpen[i]) d.open=true; });
+  container.querySelectorAll("button.tierrow").forEach(b=>{
+    b.addEventListener("click",()=>toggleTier(b.dataset.tier));
+  });
   wireStoryButtons(container);
   // "Show all notes" / "Hide all notes": opens or closes every note at once.
   const all=document.getElementById("notesAll");
@@ -2234,13 +2258,18 @@ function buildTierFilters(){
     `<button type="button" class="tierbtn" data-tier="${esc(k)}" aria-pressed="${filterTiers[k]}" title="${esc(CONF_META[k].label)}: ${esc(CONF_META[k].desc)}">${tierBadge(k)}<span class="tierbtn-label">${esc(CONF_META[k].label)}</span></button>`
   ).join("");
   el.querySelectorAll(".tierbtn").forEach(b=>{
-    b.addEventListener("click",()=>{
-      const k=b.dataset.tier;
-      filterTiers[k]=!filterTiers[k];
-      b.setAttribute("aria-pressed", String(filterTiers[k]));
-      renderActiveTab();
-    });
+    b.addEventListener("click",()=>toggleTier(b.dataset.tier));
   });
+}
+// ONE switch per tier, shared by the chips in Filters and the rows on the Sources
+// tab: both flip filterTiers, and every button that shows a tier is re-synced so
+// the two can never disagree about whether it is on.
+function toggleTier(k){
+  filterTiers[k]=!filterTiers[k];
+  document.querySelectorAll("button[data-tier]").forEach(b=>{
+    b.setAttribute("aria-pressed", String(filterTiers[b.dataset.tier]!==false));
+  });
+  renderActiveTab();
 }
 function buildLegendTop(){
   // Row one is what the MARKS mean; row two is what the confidence BADGES mean.
