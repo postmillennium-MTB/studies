@@ -221,6 +221,14 @@ tidy up reintroduces the bug.
   `role=tabpanel` + roving `tabindex` + the arrow-key handler work together. Removing
   any one leaves a worse widget than having none.
 
+- **Print is its own stylesheet, last in `<style>`, and every rule in it is inside `@media print`.** The traps:
+  - Browsers drop backgrounds when printing, and every bar, swatch and badge is one, so `print-color-adjust:exact` on `*` is load-bearing.
+  - All four themes print on white. A dark theme printed as designed is a page of ink, and Neon's cyan is under 1.5:1 on white. The side colors are retuned per theme so the two cohorts differ in *lightness* (≥2:1) as well as hue, because on a mono printer they were within 1.05–1.5:1 and indistinguishable.
+  - The print rule `.filterbody,.filterbody[hidden]{display:block}` overrides the screen's load-bearing `[hidden]` rule on purpose: the units caveat lives inside the folded filter body and must still print. Do not "fix" it to match the screen.
+  - `.srctable` is a **grid on `<tr>`** in print (five cells, note full-width beneath). It needs the real `<thead>`, which is also what makes the header repeat per page. On screen the header being a `<thead>` means `thead` — not `tr:first-child` — is what hides it on a phone.
+  - Closed `<details>` print as nothing. `printPrepare()` opens them and `printRestore()` restores the *exact* prior state; the Range SVG is redrawn at `PRINT_RANGE_W` and put back. Safari fires only the `matchMedia("print")` change, so both listeners stay.
+  - The tap-area `::after` on `.axisbtn` / `.tierbtn` is what lets the buttons be 30px to look at and 40px to touch. `.tierfilter` row-gap is 10px so wrapped rows' tap areas tile rather than overlap. Print hides the `::after`.
+
 ## Iframe consequences
 
 - **The PMR home link needs `target="_top"`.** Without it the whole site loads inside
