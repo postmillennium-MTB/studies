@@ -11,12 +11,12 @@
   <head> / <style> ............... top of file
     · PRE-PAINT THEME SHIM ........ the only logic outside the script block;
                                      see its own comment for why it must be here
-    · THEME PALETTES (CSS) ........ four: "Ledger" (default, cream), "Neon"
-                                     (1990s blacklight), "Daylight" (cool
-                                     white, colorblind-safe orange/blue) and
-                                     "Dusk" (warm low-glare dark). One CSS
-                                     block each, driven by the THEMES registry
-                                     below.
+    · THEME PALETTES (CSS) ........ four: "Daylight" (the default: cool
+                                     white, colorblind-safe orange/blue, on the
+                                     bare :root selector), "Ledger" (cream),
+                                     "Neon" (1990s blacklight) and "Dusk" (warm
+                                     low-glare dark). One CSS block each, driven
+                                     by the THEMES registry below.
     · BASE + LAYOUT ............... body, utility bar, masthead, wrap, tab nav
     · CHART ELEMENTS .............. bars, dots, unit badges, tooltip, legend
     · CONTROLS .................... MTB-only toggle, reported-ranges toggle,
@@ -62,22 +62,23 @@
                        block. Nothing else — not even the pre-paint shim.
   TO CHANGE THE DEFAULT THEME: see the specificity note in the CSS THEME section
                        before touching this — order matters there.
-  A THEME'S TITLE FACE: --head-font in its CSS block. The Ledger sets a serif;
-                       a theme that sets nothing inherits it.
+  A THEME'S TITLE FACE: --head-font in its CSS block. The default (Daylight)
+                       sets a heavy sans and the Ledger a serif; a theme that
+                       sets nothing inherits the default's.
 ==================================================================================
 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- Pre-JS defaults, matching the "Ledger" palette that :root paints. Kept at
+<!-- Pre-JS defaults, matching the "Daylight" palette that :root paints. Kept at
      "light" rather than "light dark" on purpose: the dark theme here is an
      explicit choice made at the switch, never an OS preference, and handing the
-     OS the decision would draw dark native checkboxes over the cream palette.
+     OS the decision would draw dark native checkboxes over the light palette.
      applyTheme() writes html.style.colorScheme per theme, which outranks this. -->
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
-<meta name="theme-color" content="#f4ede1"><!-- kept in sync by applyTheme() from THEMES[].paper -->
+<meta name="theme-color" content="#eef2f6"><!-- kept in sync by applyTheme() from THEMES[].paper -->
 <link rel="icon" href="favicon.ico">
 <link rel="icon" type="image/png" href="favicon-32x32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -98,12 +99,12 @@
 <script>
 /* ==== PRE-PAINT THEME SHIM — the one piece of logic that cannot live in the
    script block at the bottom of this file. By the time that block runs the page
-   has already painted, so a returning Neon visitor would get a frame of cream
+   has already painted, so a returning Neon visitor would get a frame of the default
    first. This does the minimum and applyTheme() redoes all of it properly on
    init. It is deliberately registry-AGNOSTIC: applyTheme writes the id and the
    light/dark scheme together as "id|scheme", so adding a fourth palette never
    means editing this. An id that no longer exists simply matches no CSS block
-   and :root (Ledger) paints, which is the right fallback anyway.
+   and :root (Daylight) paints, which is the right fallback anyway.
    The storage key string is duplicated in THEME_STORAGE_KEY below ON PURPOSE —
    this runs before that constant exists. Change one, change the other. ====== */
 (function(){
@@ -117,16 +118,81 @@
 }());
 </script>
 <style>
-/* ==== THEME PALETTE — "Ledger" (the default). =================================
+/* ==== THEME PALETTE — "Daylight" (the DEFAULT; light, cool, built to be read). ==
    One CSS block per theme, ids matching the THEMES registry in the data block.
-   :root and [data-theme="ledger"] carry IDENTICAL specificity, so whichever is
-   declared last wins on load. Keeping :root as the FIRST block, undecorated,
-   means first paint (before JS runs) already matches this theme. To make a
-   DIFFERENT theme the default: move the bare :root selector onto its block,
-   move that block above this one, set DEFAULT_THEME, and update the
+   :root and [data-theme="x"] carry IDENTICAL specificity, so whichever is
+   declared last wins on load. The DEFAULT theme's block therefore goes FIRST and
+   carries the bare :root selector: that is what paints before JS runs, and every
+   later [data-theme] block overrides it. To make a DIFFERENT theme the default:
+   put the bare :root selector on its block, move that block above this one,
+   give this one a [data-theme] selector, set DEFAULT_THEME, and update the
    <meta theme-color> tag. Order matters here — it is not cosmetic.
+   The structural variables at the bottom (glow, transform) are stated here too,
+   because themes that do not set them (Dusk) inherit THIS block's values.
+
+   The reading theme: near-white cool paper, a card that is pure white, and ink
+   that is 11:1 against both (a soft slate, not black). Where the Ledger is warm
+   printed matter, this is a clean screen, and its job is plain legibility in
+   bright light (a phone on a trailhead at noon).
+
+   SIDE COLORS: orange (non-local) and blue (local). That is the one pairing
+   that stays separable for the common red-green colorblindnesses — the Ledger's
+   rust/moss pair is within 1.15:1 of each other in luminance and is the classic
+   deuteranopia confusion. The mapping still follows the rule every theme keeps:
+   WARM = non-local, COOL = local.
+
+   CHROME IS GRAPHITE, NOT A HUE. --accent drives focus rings, links, the active
+   tab underline and the masthead rule, and it must never read as a result.
+   Here both data colors are saturated, so the accent is a neutral dark grey-blue
+   that cannot be mistaken for either.
+
+   CONFIDENCE TIERS HAVE NO COLOR in any theme now (see the Ledger block), so
+   there is no tier palette to keep clear of the orange and blue here.
+
+   Every text color below clears WCAG AA (4.5:1) against both --paper and --card
+   (checked, not eyeballed — see the verification list in the PR). The two -soft
+   values are the hatch stripe only and carry no text.
    ============================================================================ */
 :root{
+  --paper:#eef2f6;
+  --ink:#2a343e;         /* was #101820 (near-black); 11.3:1 on --paper, 12.7:1 on --card */
+  --ink-soft:#43515e;
+  --line:#bcc8d4;
+  --card:#ffffff;
+  --accent:#3a4651;
+  --nonlocal:#b4430a;
+  --local:#0a5aa8;
+  --nonlocal-soft:#f1c6ad;
+  --local-soft:#b8d2ec;
+  --calc:#6a4aa8;
+  --warn-bg:#fdeee4;
+  --badge-ink:#fff;
+  --track-bg:#0f1c2a0d;
+  --chip-bg:#0f1c2a14;
+  --tip-bg:#2a343e;      /* follows --ink, as in the Ledger */
+  --tip-ink:#eef2f6;
+  --tip-strong:#fff;
+  --tip-note:#c5d0da;
+  --rule-bg:var(--accent);
+  --mast-rule:var(--ink);
+  --card-glow:0 0 0 #0000;   /* a transparent shadow, NOT "none" — this sits in
+                                comma-separated box-shadow lists, and "none" is
+                                illegal as a list item and kills the whole rule */
+  --head-glow:none;          /* text-shadow; used alone, so "none" is fine */
+  --head-transform:none;
+  --head-spacing:-.02em;
+  --head-weight:800;
+  --head-font:"Avenir Next","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+}
+
+
+/* ==== THEME PALETTE — "Ledger" (cream printed matter; the original default). ===
+   A plain [data-theme="ledger"] block now: it only applies while that attribute is
+   on <html>, and because it is declared AFTER the :root block above it wins over
+   it. It therefore has to state EVERY variable itself — nothing here may be left
+   to fall through, or it would pick up the default's value (a cool-grey hairline
+   in a cream theme). ============================================================ */
+[data-theme="ledger"]{
   --paper:#f4ede1;       /* page background — warm ledger-paper cream */
   --ink:#40372f;         /* primary text. Was #2b2420, which read as near-black on the cream;
                             this is a soft dark brown-grey, still 10.0:1 on --paper and 11.2:1 on
@@ -182,14 +248,14 @@
      with a sans stack. NEVER write "inherit" as this value: on a custom
      property that keyword means "take the parent's custom property", not
      "use the body font", and the title would silently fall back to the UA
-     default. A theme that sets nothing gets this serif. */
+     default. A theme that sets nothing gets the DEFAULT theme's face. */
   --head-font:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
 }
 
 /* ==== THEME PALETTE — "Neon" (second theme; 1990s arcade blacklight). ========
    Declared AFTER :root deliberately — see the specificity note above. It can
    only win while data-theme="neon" is on <html>, so first paint (no attribute
-   yet) is still the Ledger.
+   yet) is still the default (Daylight).
 
    THE SIDE COLORS MOVE HERE, and that is a deliberate exception to the "meaning
    colors stay fixed across themes" rule stated in :root. Rust (#b5482a) and
@@ -243,57 +309,6 @@
                                 wider than a phone and orphaned "LEDGER" */
   --head-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
 }
-/* ==== THEME PALETTE — "Daylight" (third theme; light, cool, built to be read). =
-   The reading theme: near-white cool paper, a card that is pure white, and ink
-   that is 11:1 against both (a soft slate, not black). Where the Ledger is warm printed matter, this is a
-   clean screen, and its job is plain legibility in bright light (a phone on a
-   trailhead at noon).
-
-   SIDE COLORS: orange (non-local) and blue (local). That is the one pairing
-   that stays separable for the common red-green colorblindnesses — the Ledger's
-   rust/moss pair is within 1.15:1 of each other in luminance and is the classic
-   deuteranopia confusion. The mapping still follows the rule every theme keeps:
-   WARM = non-local, COOL = local.
-
-   CHROME IS GRAPHITE, NOT A HUE. --accent drives focus rings, links, the active
-   tab underline and the masthead rule, and it must never read as a result.
-   Here both data colors are saturated, so the accent is a neutral dark grey-blue
-   that cannot be mistaken for either.
-
-   CONFIDENCE TIERS HAVE NO COLOR in any theme now (see the Ledger block), so
-   there is no tier palette to keep clear of the orange and blue here.
-
-   Every text color below clears WCAG AA (4.5:1) against both --paper and --card
-   (checked, not eyeballed — see the verification list in the PR). The two -soft
-   values are the hatch stripe only and carry no text.
-   ============================================================================ */
-[data-theme="daylight"]{
-  --paper:#eef2f6;
-  --ink:#2a343e;         /* was #101820 (near-black); 11.3:1 on --paper, 12.7:1 on --card */
-  --ink-soft:#43515e;
-  --line:#bcc8d4;
-  --card:#ffffff;
-  --accent:#3a4651;
-  --nonlocal:#b4430a;
-  --local:#0a5aa8;
-  --nonlocal-soft:#f1c6ad;
-  --local-soft:#b8d2ec;
-  --calc:#6a4aa8;
-  --warn-bg:#fdeee4;
-  --badge-ink:#fff;
-  --track-bg:#0f1c2a0d;
-  --chip-bg:#0f1c2a14;
-  --tip-bg:#2a343e;      /* follows --ink, as in the Ledger */
-  --tip-ink:#eef2f6;
-  --tip-strong:#fff;
-  --tip-note:#c5d0da;
-  --rule-bg:var(--accent);
-  --mast-rule:var(--ink);
-  --head-spacing:-.02em;
-  --head-weight:800;
-  --head-font:"Avenir Next","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
-}
-
 /* ==== THEME PALETTE — "Dusk" (fourth theme; dark, warm, low-glare). ==========
    The dark theme you can read for ten minutes. Neon is a poster; this is a
    chart. Warm charcoal rather than blue-black, ink that is off-white rather than
@@ -950,11 +965,13 @@ const SITES=[
      look   "solid" | "tint" | "outline" — which .tierbadge treatment to draw
             (a certainty ramp, filled in -> left open). A fourth tier needs a
             look; if none of the three fits, add one .tierbadge.look-* rule.
+     shown  false = this tier starts UNTICKED in the filter bar. Absent means shown.
+            It is a starting state only; the chips still turn it on.
    TO ADD A TIER: add one entry; every render function reads from this. ======== */
 const CONF_META={
   v:{label:"Verified",  look:"solid",   desc:"A primary study's own direct rider survey."},
   m:{label:"Medium",    look:"tint",    desc:"A blended/synthesis figure across trails, or reached only through a secondary compilation whose original study wasn't independently reviewed."},
-  l:{label:"Low",       look:"outline", desc:"Borrowed from an unrelated benchmark, a heavy generalizing assumption, a proxy not specific to mountain biking, or a figure that could not be traced back to the source cited beside it."},
+  l:{label:"Low",       look:"outline", shown:false, desc:"Borrowed from an unrelated benchmark, a heavy generalizing assumption, a proxy not specific to mountain biking, or a figure that could not be traced back to the source cited beside it."},
 };
 
 /* Fallback for a `conf` value that is not in CONF_META. A typo in a data row used
@@ -1068,7 +1085,7 @@ const THEMES=[
   {id:"daylight", label:"Daylight", swatch:"#b4430a", swatch2:"#0a5aa8", paper:"#eef2f6", scheme:"light"},
   {id:"dusk",    label:"Dusk",    swatch:"#ffb347", swatch2:"#1b1a18", paper:"#1b1a18", scheme:"dark"},
 ];
-const DEFAULT_THEME="ledger";
+const DEFAULT_THEME="daylight";
 /* localStorage is a PREFERENCE store here and nothing else: the tool works
    identically with it empty, blocked or full of junk, which it will be inside a
    third-party iframe on Safari. The stored value is "id|scheme" rather than
@@ -1104,7 +1121,8 @@ const TABS=[
   {id:"sources", label:"Sources", render:"renderSources", ranges:false, chart:false},
 ];
 
-/* ==== AXES — the views By Site can draw. The first is the default. ===========
+/* ==== AXES — the views By Site can draw, in the order the switch shows them. =====
+   The default view is DEFAULT_AXIS below, not "the first one". =================
      id      "linear" | "log" | "range" — read by renderBySite / barLine, so a new
              one also needs a branch there; this registry only names and describes it
      names   true if the view has study names to show, which makes the filter bar's
@@ -1129,9 +1147,12 @@ const AXES=[
      id    the hash, without the "#"
      tab   a TABS id
      axis  an AXES id ============================================================ */
+const DEFAULT_AXIS="range";   // the view the tool opens on, and the one whose address needs no hash
+
 const HASH_ALIASES=[
-  {id:"range", tab:"bysite", axis:"range"},
-  {id:"log",   tab:"bysite", axis:"log"},
+  {id:"range",  tab:"bysite", axis:"range"},
+  {id:"log",    tab:"bysite", axis:"log"},
+  {id:"linear", tab:"bysite", axis:"linear"},
 ];
 
 /* ==== UI_TEXT — interface strings that are not data rows. ====================
@@ -1203,8 +1224,8 @@ let activeTab=TABS[0].id;
 let filterMtbOnly=true;
 let filterShowRanges=true;
 let filterShowNames=false;   // Range view only: print every study name at once, not just the hovered row's
-let axisMode=AXES[0].id;   // an AXES id; a deep link (HASH_ALIASES) can set it before first paint
-const filterTiers=Object.fromEntries(Object.keys(CONF_META).map(k=>[k,true]));
+let axisMode=DEFAULT_AXIS;   // an AXES id; a deep link (HASH_ALIASES) can set it before first paint
+const filterTiers=Object.fromEntries(Object.keys(CONF_META).map(k=>[k, CONF_META[k].shown!==false]));
 
 /* ── small helpers ───────────────────────────────────────────────────────── */
 function esc(s){ // escape any user-facing string before it touches innerHTML
@@ -1413,7 +1434,7 @@ function renderBySite(container){
 }
 // The switch plus the one line saying what the current view's geometry means.
 function viewHeadHtml(){
-  const axis=AXES.find(a=>a.id===axisMode)||AXES[0];
+  const axis=AXES.find(a=>a.id===axisMode)||AXES.find(a=>a.id===DEFAULT_AXIS);
   return axisControlHtml()+`<p class="axisnote" id="axisNote">${esc(axis.note)}</p>`;
 }
 function wireAxisButtons(container){
@@ -1730,7 +1751,7 @@ function applyTheme(id){
        still works for this visit; it just won't be remembered. */
   }
   // Let the PMR wrapper page repaint its own background to match, so a dark
-  // theme doesn't sit in a cream frame. See tellParentTheme().
+  // theme doesn't sit in a light frame. See tellParentTheme().
   tellParentTheme(t);
 }
 /* The wrapper page is a different origin and cannot read this tool's
@@ -1928,7 +1949,10 @@ const SHARE_FLASH_MS=1900;      // how long the status pill stays up after a cop
 // first tab is the default view and carries NO hash — a clean URL is a better
 // thing to paste than one ending in "#bysite".
 function shareUrl(){
-  // A view that has its own alias (By Site on the Log axis is "#range") shares
+  // The default view needs no address at all: a clean URL is a better thing to
+  // paste than one ending in "#range", and it opens on the same plot.
+  if(activeTab===TABS[0].id && axisMode===DEFAULT_AXIS) return SHARE_URL;
+  // A view that has its own alias (By Site on the Log axis is "#log") shares
   // as that alias, so the address a person copies is the one that was always
   // used for it. See HASH_ALIASES.
   const alias=HASH_ALIASES.find(a=>a.tab===activeTab && a.axis===axisMode);
@@ -2006,7 +2030,7 @@ function viewFromHash(hash){
   const id=String(hash||"").replace(/^#/,"").trim().toLowerCase();
   const alias=HASH_ALIASES.find(a=>a.id===id);
   if(alias) return {tab:alias.tab, axis:alias.axis};
-  if(TABS.some(t=>t.id===id)) return {tab:id, axis:id===TABS[0].id ? AXES[0].id : null};
+  if(TABS.some(t=>t.id===id)) return {tab:id, axis:id===TABS[0].id ? DEFAULT_AXIS : null};
   return null;
 }
 function applyHash(hash){
