@@ -45,7 +45,8 @@
                                      bars (Linear) or dots (Log)
     · renderRangeView() ........... the Range view: every figure in two lanes,
                                      SVG; unit always beside a dot,
-                                     study name on row hover
+                                     study name on row hover or via the
+                                     "Show study names" checkbox
     · renderSources() ............. "Sources" tab (methodology, tiers, citations)
     · theme switch ................ applyTheme / buildThemeSwitch
     · share ....................... shareUrl / wireShare — native sheet, then
@@ -127,7 +128,9 @@
    ============================================================================ */
 :root{
   --paper:#f4ede1;       /* page background — warm ledger-paper cream */
-  --ink:#2b2420;         /* primary text */
+  --ink:#40372f;         /* primary text. Was #2b2420, which read as near-black on the cream;
+                            this is a soft dark brown-grey, still 10.0:1 on --paper and 11.2:1 on
+                            --card, and clearly darker than --ink-soft (the hierarchy survives). */
   --ink-soft:#5c5148;    /* secondary text */
   --line:#d8cbb6;        /* hairlines, card borders */
   --card:#fffaf2;        /* card background, slightly lighter than paper */
@@ -155,7 +158,7 @@
   --badge-ink:#fff;      /* text inside a filled tier badge */
   --track-bg:#00000008;  /* the empty part of a bar track */
   --chip-bg:#00000010;   /* unit badge, "archived" flag */
-  --tip-bg:#2b2420;      /* tooltip — inverted against the page in this theme */
+  --tip-bg:#40372f;      /* tooltip — inverted against the page in this theme, so it follows --ink */
   --tip-ink:#f4ede1;
   --tip-strong:#fff;
   --tip-note:#d9cdbd;
@@ -242,7 +245,7 @@
 }
 /* ==== THEME PALETTE — "Daylight" (third theme; light, cool, built to be read). =
    The reading theme: near-white cool paper, a card that is pure white, and ink
-   that is 16:1 against both. Where the Ledger is warm printed matter, this is a
+   that is 11:1 against both (a soft slate, not black). Where the Ledger is warm printed matter, this is a
    clean screen, and its job is plain legibility in bright light (a phone on a
    trailhead at noon).
 
@@ -266,7 +269,7 @@
    ============================================================================ */
 [data-theme="daylight"]{
   --paper:#eef2f6;
-  --ink:#101820;
+  --ink:#2a343e;         /* was #101820 (near-black); 11.3:1 on --paper, 12.7:1 on --card */
   --ink-soft:#43515e;
   --line:#bcc8d4;
   --card:#ffffff;
@@ -280,7 +283,7 @@
   --badge-ink:#fff;
   --track-bg:#0f1c2a0d;
   --chip-bg:#0f1c2a14;
-  --tip-bg:#101820;
+  --tip-bg:#2a343e;      /* follows --ink, as in the Ledger */
   --tip-ink:#eef2f6;
   --tip-strong:#fff;
   --tip-note:#c5d0da;
@@ -626,7 +629,7 @@ a{color:var(--accent)}
 .striphover{fill:transparent}
 .striprow:hover .striphover{fill:var(--chip-bg)}
 .stripname{opacity:0}
-.striprow:hover .stripname{opacity:1}
+.striprow:hover .stripname,.rangesvg.shownames .stripname{opacity:1}
 /* The tick labels, aligned to the tracks by sharing --lab-w / --val-w with the
    rows. Sticky so the scale stays in view while you read down fifteen sites; if a
    host page makes that impossible it simply scrolls away like any header. */
@@ -842,6 +845,8 @@ footer a:hover{text-decoration-thickness:2px}
     <div class="filterbody" id="filterBody" hidden>
       <label><input type="checkbox" id="mtbOnly" checked> MTB studies only</label>
       <label id="rangesControl"><input type="checkbox" id="showRanges" checked> Show ranges</label>
+      <!-- Range view only — setTabControls() shows it when the active view has names. -->
+      <label id="namesControl" style="display:none"><input type="checkbox" id="showNames"> Show study names</label>
       <!-- Confidence toggles are BUILT FROM CONF_META by buildTierFilters(). -->
       <span class="tierfilter" id="tierFilter"></span>
       <span class="note" id="filterNote">Bars and dots plot the dollar figure exactly as each study reported it. Studies measure different things — a day, a night, a trip, a whole visit — so a unit badge sits on every value. Don't read two different units as directly comparable; that inconsistency is itself part of the story (see Sources tab).</span>
@@ -1102,6 +1107,8 @@ const TABS=[
 /* ==== AXES — the views By Site can draw. The first is the default. ===========
      id      "linear" | "log" | "range" — read by renderBySite / barLine, so a new
              one also needs a branch there; this registry only names and describes it
+     names   true if the view has study names to show, which makes the filter bar's
+             "Show study names" checkbox appear while it is the active view
      label   the button text
      note    the one line printed above the chart saying what the geometry MEANS.
              A log axis in particular cannot be read without being told.
@@ -1112,7 +1119,7 @@ const TABS=[
 const AXES=[
   {id:"linear", label:"Linear", note:"Bars run from $0 to $650. Compare only bars with the same unit badge."},
   {id:"log",    label:"Log",    note:"Log scale: each gridline is 10× the last, so equal spacing means equal ratio, not equal dollars. Compare only the same unit badge."},
-  {id:"range",  label:"Range",  note:"Every figure on one log scale, non-local above local. A line joins the two ends of a reported range. Point at a row for the study name (tap a dot on a phone); compare only figures with the same unit."},
+  {id:"range",  label:"Range",  names:true, note:"Every figure on one log scale, non-local above local. A line joins the two ends of a reported range. Point at a row for the study name (tap a dot on a phone), or tick Show study names under Filters. Compare only figures with the same unit."},
 ];
 
 /* ==== HASH_ALIASES — addresses that open a particular VIEW of a tab, not a
@@ -1132,6 +1139,7 @@ const HASH_ALIASES=[
      showing    "{n} of {total}" counts the figures the filters let through
      mtbOn / mtbOff        the MTB-only filter's state
      rangesOff             printed only when ranges are hidden (on is the default)
+     namesOn               printed only when Show study names is ticked (off is the default)
      tiersAll / tiersSome  the confidence filter's state; {list} is the letters
    tabsLabel  the accessible name of the tab bar.
    viewLabel  the Linear / Log / Range switch's label and accessible name.
@@ -1141,7 +1149,7 @@ const HASH_ALIASES=[
 const UI_TEXT={
   showing:"Showing {n} of {total}",
   mtbOn:"MTB only", mtbOff:"all studies",
-  rangesOff:"ranges hidden",
+  rangesOff:"ranges hidden", namesOn:"names shown",
   tiersAll:"all tiers", tiersSome:"tiers {list}",
   tabsLabel:"Views",
   viewLabel:"View",
@@ -1194,6 +1202,7 @@ const WIDE_MIN_PX=640;          // the one phone/desktop breakpoint the script n
 let activeTab=TABS[0].id;
 let filterMtbOnly=true;
 let filterShowRanges=true;
+let filterShowNames=false;   // Range view only: print every study name at once, not just the hovered row's
 let axisMode=AXES[0].id;   // an AXES id; a deep link (HASH_ALIASES) can set it before first paint
 const filterTiers=Object.fromEntries(Object.keys(CONF_META).map(k=>[k,true]));
 
@@ -1545,7 +1554,7 @@ function renderRangeView(container,rows){
     });
     y=rowsTop+rowsH+14;
   });
-  html+=`<div class="rangewrap"><svg class="rangesvg" viewBox="0 0 ${W} ${y}" width="100%" role="img" aria-label="${esc(UI_TEXT.rangeAria)}">${svg}</svg></div>`;
+  html+=`<div class="rangewrap"><svg class="rangesvg${filterShowNames?" shownames":""}" viewBox="0 0 ${W} ${y}" width="100%" role="img" aria-label="${esc(UI_TEXT.rangeAria)}">${svg}</svg></div>`;
   container.innerHTML=html;
   wireAxisButtons(container);
   wireBarEvents(container);
@@ -1564,6 +1573,7 @@ function fitName(name,room){
 function setAxis(id){
   if(!AXES.some(a=>a.id===id) || id===axisMode) return;
   axisMode=id;
+  syncNamesControl();
   buildLegendTop();
   syncShareHref();
   if(activeTab==="bysite") renderActiveTab();
@@ -1800,6 +1810,7 @@ function updateFilterSummary(){
   ];
   const tab=TABS.find(t=>t.id===activeTab);
   if(tab && tab.ranges && !filterShowRanges) parts.push(UI_TEXT.rangesOff);
+  if(hasNames() && filterShowNames) parts.push(UI_TEXT.namesOn);
   parts.push(on.length===Object.keys(filterTiers).length
     ? UI_TEXT.tiersAll
     : UI_TEXT.tiersSome.replace("{list}", on.map(k=>k.toUpperCase()).join(", ")||"none"));
@@ -1862,6 +1873,17 @@ function setActiveTab(id){
 function setTabControls(tab){
   document.getElementById("rangesControl").style.display = tab.ranges ? "flex" : "none";
   document.getElementById("filterNote").style.display = tab.chart ? "" : "none";
+  syncNamesControl();
+}
+// True while the active view is one that has study names to show (AXES[].names).
+function hasNames(){
+  const tab=TABS.find(t=>t.id===activeTab), ax=AXES.find(a=>a.id===axisMode);
+  return !!(tab && tab.chart && ax && ax.names);
+}
+// The "Show study names" checkbox belongs to a VIEW, not a tab, so it is re-synced
+// whenever either changes: from setTabControls() and from setAxis().
+function syncNamesControl(){
+  document.getElementById("namesControl").style.display = hasNames() ? "flex" : "none";
 }
 // Open or fold the filter controls. The button is a disclosure: aria-expanded
 // says which, aria-controls says what it governs.
@@ -1875,6 +1897,9 @@ function wireFilters(){
   });
   document.getElementById("showRanges").addEventListener("change",e=>{
     filterShowRanges=e.target.checked; renderActiveTab();
+  });
+  document.getElementById("showNames").addEventListener("change",e=>{
+    filterShowNames=e.target.checked; renderActiveTab();
   });
   const tog=document.getElementById("filterToggle");
   tog.addEventListener("click",()=>{
