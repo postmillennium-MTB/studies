@@ -52,7 +52,7 @@ permission policy and the postMessage bridge follows from that.
   masthead, tab bar, filter bar, panels — mostly empty shells that JS fills
   <script>
     ==== one contiguous DATA block ====
-    SITES · CONF_META · UNIT_META · link icons · FOREIGN_SITES
+    SITES · CONF_META · UNIT_META · link icons · FOREIGN_SITES · STORIES
     SHARE/HOME URLs · PMR_ORIGINS · EXCLUSIONS · THEMES · TABS
     /* ===== END OF DATA — everything below is logic ===== */
     tuning constants, render functions, theme, share, deep links, init()
@@ -77,6 +77,7 @@ inline in a render function, or a threshold living inside an `if`, is a bug.
 | a tab | write the render function, add one line to `TABS` (it becomes shareable at `/studies/#<id>` for free) |
 | a theme | one entry in `THEMES` + one CSS `[data-theme="…"]` block. Nothing else — not even the pre-paint shim |
 | an exclusion | one entry in `EXCLUSIONS` |
+| a place story | one entry in `STORIES` — `ids` are the `SITES` / `FOREIGN_SITES` ids it covers (two rows about one place share one entry), `paras`, and up to three `links`. A new site with no story simply shows no chevron |
 
 **Mobile-first.** Base styles are the phone; `@media (min-width: …)` adds the desktop.
 Touch targets ≥ 40px.
@@ -195,6 +196,8 @@ tidy up reintroduces the bug.
   is the bare URL, so `shareUrl()` returns no hash for it; Linear has its own
   `#linear` alias now. Do not reintroduce "the first entry is the default" — it is why
   reordering the View switch used to change what the tool opened on.
+- **A story is background, never data.** It must not restate a dollar figure from the table (an edited row would then contradict its own story), and where public sources disagree (trail mileage, opening years) it says so or leaves the number out. It is always printed with `UI_TEXT.storyNote` so a reader can tell it from a sourced figure. Its links come from search results and were **not opened** when written (the build environment could not reach outside hosts), so click-test them before relying on one.
+- **`.srctable tr.storyrow[hidden]{display:none}` is load-bearing,** for the same reason as `.filterbody[hidden]`: `.srctable tr` sets `display:block` (phone) or `table-row` (desktop) and outranks the attribute. The story cell is `display:block` on the phone and `table-cell` (colspan 6) from 640px; it is a whole extra row, not text in the Site cell, because that column is ~150px wide on a desktop.
 - **`#range` is the Range view, `#log` is the Log view.** `#range` was briefly pointed at Log during Pass 2, which was wrong: existing links to it meant the two-lane plot.
 - **The Log axis draws dots, never bars.** A bar's length is its value from a baseline,
   and a log axis has no zero, so a log-scaled bar's length means nothing. Dots claim
@@ -278,6 +281,7 @@ the sessions that built this could not open external PDFs.
 
 **Build**
 
+- **Stories hide with their rows.** The Sources table obeys the filters, so with the defaults (MTB studies only, Low off) the stories for every non-MTB row and every Low row — Bentonville, CAMBA, Keene, James River — are not reachable until the filters are widened. Considered and left as is: it matches every other table on the tab, and the "Showing N of 21" line says rows are hidden.
 - **No headline stat.** "11 of 15 MTB studies never surveyed locals" is the strongest
   finding in the dataset and is currently only visible by scrolling past "not
   reported" eleven times.

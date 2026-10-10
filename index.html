@@ -27,6 +27,9 @@
     · SITES ....................... the big array — every study/site is one line
     · CONF_META ................... confidence tier -> label, color, description
     · UNIT_META ................... reporting unit (day/night/trip/visit) -> label
+    · STORIES ..................... one short piece of background per PLACE,
+                                     behind the "The story" chevron on the Sources
+                                     tab. Not data; never restates a table figure
     · FOREIGN_SITES ............... non-USD studies, read and tiered but held
                                      out of the charts — see that array's comment
     · SHARE + HOME ................ the canonical PMR addresses this tool hands
@@ -56,6 +59,8 @@
 
   TO ADD A SITE:      add ONE line to the SITES array. See the legend comment
                        directly above it for what each field means.
+  TO ADD A STORY:     add ONE entry to STORIES (ids = the SITES ids it covers).
+                       See the comment above that array for the two rules.
   TO ADD A TAB:       write your render function, then add ONE line to TABS.
                        It becomes shareable at /studies/#<id> for free.
   TO ADD A THEME:     add ONE line to THEMES + one matching CSS [data-theme]
@@ -441,7 +446,7 @@ a{color:var(--accent)}
 }
 .share-wrap.flash .share-status{opacity:1}
 @media(prefers-reduced-motion:reduce){
-  .share-btn,.share-status,.filterbar.touched .chev{transition:none}
+  .share-btn,.share-status,.filterbar.touched .chev,.storybtn .chev{transition:none}
 }
 
 /* ── Masthead ─────────────────────────────────────────────────────────────── */
@@ -708,6 +713,26 @@ a{color:var(--accent)}
 .notedetails p{margin:0 0 6px;line-height:1.5;color:var(--ink)}
 .srcfold>summary{cursor:pointer;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:40px;font-weight:700;font-size:.94rem}
 .srcfold[open]>summary{margin-bottom:8px}
+/* The place story: a chevron button in the Site cell and a whole extra row under
+   its study. [hidden] needs its own rule here for the same reason as .filterbody:
+   the row's display (block on a phone, table-row on desktop) is set by .srctable
+   rules that outrank the attribute. */
+.storybtnwrap{margin-top:2px}
+.storybtn{
+  appearance:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px;
+  min-height:40px;padding:2px 10px 2px 0;border:0;background:none;
+  font:inherit;font-size:.8rem;font-weight:600;color:var(--accent);
+  text-decoration:underline;text-underline-offset:2px;
+}
+.storybtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.storybtn .chev{width:16px;height:16px;flex:none;transition:transform .2s}
+.storybtn[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.srctable tr.storyrow[hidden]{display:none}
+.srctable td.storycell{display:block;padding:8px 0 10px 12px;border-left:3px solid var(--accent);background:var(--track-bg)}
+.srctable td.storycell::before{content:none}
+.storytext{max-width:68ch}
+.storytext p{margin:0 0 .7em;font-size:.88rem;line-height:1.6;color:var(--ink)}
+.storytext p.storymeta{margin:.4em 0 0;font-size:.78rem;line-height:1.5;color:var(--ink-soft)}
 /* ── Source tables ────────────────────────────────────────────────────────
    Mobile-first, and here that is not a stylistic preference — it is the fix for
    a real bug. Six columns of citation text have an intrinsic width of ~628px.
@@ -790,6 +815,8 @@ footer a:hover{text-decoration-thickness:2px}
   .srctable td{display:table-cell;border-bottom:1px solid var(--line);padding:7px 6px;vertical-align:top}
   .srctable td::before{content:none}
   .srctable td.srccell-site{display:table-cell;font-weight:400;font-size:inherit;margin-bottom:0}
+  /* The story row spans all six columns as a real table cell; on the phone it is a block. */
+  .srctable td.storycell{display:table-cell;padding:10px 12px 12px}
   /* Keeps "$138.49 /day" on one line in a column. On the phone's stacked layout
      it instead sets a min-content floor that pans the page — see the note above. */
   .srcval{white-space:nowrap}
@@ -1057,6 +1084,187 @@ const EXCLUSIONS=[
    url:"https://www.tpl.org/wp-content/uploads/2025/03/Economic-Benefits-of-Mountain-Biking.pdf", archiveUrl:null},
 ];
 
+/* ==== STORIES — one short piece of background on each PLACE, shown behind the
+   "The story" chevron on the Sources tab. ====================================
+   TO ADD ONE: add an entry here; ids are SITES / FOREIGN_SITES ids.
+     ids     the rows this story belongs to. Two rows about one place (Duluth's
+             day-trip and overnight figures) share ONE entry and both show it.
+     paras   one string per paragraph. Plain text; it is escaped, not parsed.
+     links   up to three { t:"label", u:"https://…" } — where the background came
+             from. Same rule as SITES: a URL that was not actually seen is not
+             written down, and anything that is not http(s) is dropped at render.
+   WHAT A STORY IS NOT: it is not data and not a source for any figure. Two rules
+   keep it that way. (1) It never restates a dollar figure from the table — an
+   edited row must not be able to contradict its own story. (2) Where the public
+   sources disagree (trail mileage, opening years), it says so or leaves the
+   number out. Every story is shown with UI_TEXT.storyNote beside it, so a reader
+   can tell background from the sourced numbers. ================================ */
+const STORIES=[
+{ids:["coldwater"],
+ paras:[
+  "Anniston was built to be a model. Samuel Noble and Daniel Tyler's Woodstock Iron Company laid it out in the early 1870s as a planned industrial town, and an Atlanta editor later called it the “Model City of the New South.” The twentieth century was harder on it. Fort McClellan, the Army post beside the town, closed in 1999 after a 1995 base-closure decision, and Anniston became known for PCB contamination from a Monsanto chemical plant that had operated there. A place with that history is not where anyone expected a mountain bike destination to appear.",
+  "Coldwater Mountain is the other side of that ledger. Alabama's Forever Wild land program bought a tract of roughly 4,000 acres of ridge and forest right beside town around the turn of the millennium (sources put it between the late 1990s and 2000). Volunteers and the state cut a few crude trails in the mid-2000s, and by one account the project then stalled for most of a decade as local leadership changed. What restarted it was the idea that the mountain could make Anniston a destination. IMBA's trail-building group drew up plans for a system of about 60 miles, and in the summer of 2012 the state opened an access road, a trailhead and the first phase of trails, two loops. It is state-managed today, with a recreation trails director on staff. Published mileage runs from the mid 30s to the mid 50s depending on the source and the year, so this story quotes none.",
+  "That timing is the key to reading the row. The economic study behind it was released in September 2012, the same summer the first trails opened, and coverage of its release says it was funded by Solutia, the successor to Monsanto's chemical business, which ran the plant described above. It was a projection of what a mountain bike destination might bring in, not a count of what this one had. Its own authors judged the raw rider-survey figure too high, because respondents were self-selected enthusiasts, and built their published projection on a lower blended figure. Read the number in this row as what enthusiastic riders said they spend, not as what Anniston has collected."
+ ],
+ links:[
+  {t:"REI on how Coldwater got built",u:"https://www.rei.com/blog/cycle/rebuilding-appalachia"},
+  {t:"The 2012 study's release (OutdoorHub)",u:"https://www.outdoorhub.com/news/2012/09/26/alabamas-forever-wild-coldwater-mountain-recreational-trail-system-economic-impact-study-results-announced/"},
+  {t:"The founding of Anniston (Business Alabama)",u:"https://businessalabama.com/retrospect-the-founding-of-anniston"}
+ ]},
+{ids:["cgnf-bozeman"],
+ paras:[
+  "This is the Bozeman end of Montana's Custer Gallatin National Forest. The Forest Service's Bozeman Ranger District covers most of the public land around the city, including Hyalite and the Bridger Range, along with country around Big Sky, so one row here is really a cluster of trail systems with a fast-growing gateway town at the center. The study behind it was commissioned by Outdoor Alliance and carried out in 2018 by Eastern Kentucky University researchers while the Forest Service was rewriting the forest's management plan. Its job was to give planners a dollar figure for mountain biking to set beside the older uses of the forest. Notably, this is one of the rows where residents reported spending more per trip than visitors. Gear is the likely reason: the row's own note says the local figure leaves out new-bike purchases, and with them the study's raw local number is much higher. That is a reading of the note, not a finding of the study."
+ ],
+ links:[
+  {t:"Outdoor Alliance: Custer Gallatin reports",u:"https://outdooralliance.org/custer-gallatin-economic-reports"},
+  {t:"Forest Service: Bozeman Ranger District",u:"https://fs.usda.gov/r01/custergallatin/recreation/bozeman-ranger-district"}
+ ]},
+{ids:["cgnf-other"],
+ paras:[
+  "The rest of the Custer Gallatin. The forest is enormous and oddly shaped: Outdoor Alliance describes about 3.2 million acres of public land running from West Yellowstone, Montana, to Camp Crook, South Dakota. Away from Bozeman and Big Sky the riding is thinner and scattered, so the study could not report each area on its own. It pooled four of them (Livingston and Paradise Valley, Red Lodge, Sioux and Ashland, and West Yellowstone) into one blended estimate. That makes this row a portrait of lower-traffic Montana and South Dakota forest rather than of any one town. As in Bozeman, residents reported spending more per trip than visitors. Small samples cut both ways: pooling made an estimate possible, but it also hides which of the four places is doing the work."
+ ],
+ links:[
+  {t:"Outdoor Alliance: Custer Gallatin National Forest",u:"https://www.outdooralliance.org/custer-gallatin-national-forest"},
+  {t:"Outdoor Alliance: the 2018 studies",u:"https://www.outdooralliance.org/blog/2018/11/28/new-studies-on-the-economic-impact-of-outdoor-recreation-on-montanas-custer-gallatin-national-forest-and-colorados-grand-mesa-uncompahgre-and-gunnison-national-forests"}
+ ]},
+{ids:["oakridge"],
+ paras:[
+  "Oakridge is a former timber town in the Cascade foothills southeast of Eugene, Oregon. It was a logging hub from the 1920s, and its sawmills closed between the mid-1980s and the early 1990s (sources differ on the dates), taking the town's economy and real estate market with them. The trail network grew out of what the mills left behind. Local riders saw potential in abandoned logging roads and fire trails, won a planning grant and organized volunteers, a group that became the Greater Oakridge Area Trail Stewards. Shops, shuttles and events followed; the Cascade Cream Puff 100-mile race dates to 1995. Today Oakridge is listed by IMBA as a Gold-level Ride Center and is often called the mountain biking capital of the Northwest. The row comes from a University of Oregon survey of 132 non-local visitors, which is why it is one of the Verified ones: it asked riders directly. The range reflects where they stayed."
+ ],
+ links:[
+  {t:"Oregon timber town welcomes mountain bikers (JPR)",u:"https://www.ijpr.org/post/oregon-timber-town-welcomes-mountain-bikers"},
+  {t:"IMBA Ride Centers",u:"https://imba.com/ride-centers"}
+ ]},
+{ids:["chattanooga"],
+ paras:[
+  "Chattanooga's trail network is largely the work of one volunteer chapter. SORBA Chattanooga formed in 2003 and, by one account, started with little experience building trail, little money and little credibility. In 2004 it set a goal of growing local trail from 7 miles to 100 (the Singletrack Mind Initiative), and a rider-drawn map of trails within a short drive of downtown became the plan. By the end of 2023 the chapter's own history page counts 167 miles of bike-accessible trail within 30 minutes of downtown, across systems that include Raccoon Mountain, Stringer's Ridge and Enterprise South Nature Park. This row is the clearest example in the table of a study that says exactly what it measured: a 2022 SORBA and UTC survey of non-local visitors only. Locals, who the row's note says were about two thirds of riders, were not surveyed at all, so the Local cell is empty because of the study's scope, not a gap in the data. It is also why the figure is a whole-trip total for an average stay, not a daily rate."
+ ],
+ links:[
+  {t:"SORBA Chattanooga: our history",u:"https://www.sorbachattanooga.org/aboutus"}
+ ]},
+{ids:["wv-synthesis"],
+ paras:[
+  "This row is not a place; it is a rule of thumb. WVU Extension researchers wanted a spending figure for mountain bikers without a survey of its own, so they took figures from Coldwater, Jackson Hole, Chequamegon, Nantahala/Pisgah and Kingdom Trails, adjusted them to 2018 dollars, and rounded. The context explains the motive. West Virginia's mountain towns have been moving from coal and timber toward recreation, and a round, defensible number is the kind a county or a trail group wants for a grant application. The risk with a number like this is that it is easy to repeat and hard to trace, which is why it is tiered Medium. It is the authors' own estimate, assembled from other places, not a measurement of West Virginia riders."
+ ],
+ links:[
+  {t:"WVU: Canaan Mountain Backcountry",u:"https://diyoutdoors.wvu.edu/mountain-biking/canaan-mountain-backcountry"},
+  {t:"Freehub on West Virginia's old-school scene",u:"https://freehub.com/features/unapologetically-old-school"}
+ ]},
+{ids:["wv-tucker"],
+ paras:[
+  "Tucker County is the heart of West Virginia mountain biking: Davis, Canaan Valley, Blackwater Falls and the Canaan Mountain backcountry. A Civilian Conservation Corps trail from the 1930s, the Plantation Trail, is described in one rider's history as a birthplace of the state's mountain biking. Racing came early; a Pinkbike history says a NORBA National brought about 400 riders to Davis in 1988. Davis was a coal and timber town, and as those industries faded tourism filled in, with the town's longtime bike shop run by a Mountain Bike Hall of Famer. This row is event spending, not ordinary trip spending. It reflects riders at a race, who pay entry fees and travel for a fixed date, so it likely reads higher than a typical weekend would."
+ ],
+ links:[
+  {t:"Freehub on West Virginia's old-school scene",u:"https://freehub.com/features/unapologetically-old-school"},
+  {t:"Pinkbike: East Bound and Down, Davis WV",u:"https://m.pinkbike.com/news/east-bound-and-down-davis-west-virginia-2016.html"}
+ ]},
+{ids:["duluth-day","duluth-overnight"],
+ paras:[
+  "Duluth is a port city strung along a steep hillside above Lake Superior, and its riders have spent years stitching the trail systems inside the city limits into one continuous route, the Duluth Traverse, planned at about 100 miles. The Cyclists of Gitchee Gumee Shores (COGGS) leads the work with a full-time crew paid for by grants and local donations, and in 2015 the International Mountain Bicycling Association named Duluth one of six Gold-level Ride Centers. Both Duluth rows come from the same source, and it is worth knowing what it is: a 2017 undergraduate honors capstone at the University of Minnesota Duluth, not a commissioned study. Its figures are annual per-rider totals that this tool divided by trips and nights, which is why they carry the calc flag. It is thin evidence about a place with a very strong story."
+ ],
+ links:[
+  {t:"Destination Duluth on COGGS and the trails",u:"https://destinationduluth.org/duluths-biking-trails-rank-in-the-top-six-with-the-help-of-coggs/"},
+  {t:"Singletracks: IMBA's Gold-level Ride Centers",u:"https://www.singletracks.com/mtb-trails/imbas-new-ride-centers-from-1-to-6-gold-level-centers/"}
+ ]},
+{ids:["keene"],
+ paras:[
+  "Keene is a small New Hampshire city whose mountain bike scene is, above all, local. The main system, Drummer Hill and Goose Pond, is about 31 miles of singletrack and doubletrack at the edge of town, maintained by the Brattleboro-Keene chapter of the New England Mountain Biking Association. The pond is said to have taken its name around 1800, when a hunter carried a wild goose back to the village. The study, from UNH Extension in 2023, says plainly that it could not separate local from non-local spending and that Keene's riders are overwhelmingly local. So the figure is a blend of residents and a few visitors, tiered Low on purpose. Treat it as a floor for what a visitor might spend, not as a visitor estimate. It earns its place in the table as a reminder that most trail systems are community trails first and destinations rarely."
+ ],
+ links:[
+  {t:"Trailfinder: Drummer Hill and Goose Pond",u:"https://trailfinder.info/trails/trail/drummer-hill-and-goose-pond"}
+ ]},
+{ids:["kingdom-trails"],
+ paras:[
+  "Kingdom Trails in East Burke, Vermont, runs on something most destinations cannot copy: the whole network sits on private land. It began informally around a ski shop, East Burke Sports, opened in 1988, with trails cut across neighbors' property, and was formalized in 1994 as the nonprofit Kingdom Trail Association, which published its first map in 1996. Today around a hundred landowners allow riders across their land, and a day, monthly or annual pass is what funds maintenance and keeps those relationships, and so the trails, open. Because everyone needs a pass, visits are unusually easy to count, which is part of why this network is studied so often. The row comes from a 2016 Camoin Associates report for the Vermont Trails & Greenways Council that this tool read only through a Trust for Public Land compilation, so it is tiered Medium, with the original report linked beside it."
+ ],
+ links:[
+  {t:"Kingdom Trails celebrates 25 years",u:"https://happyvermont.com/?p=7522"},
+  {t:"IMBA: East Burke",u:"https://www.imba.com/blog/MBRBTT-eastburke"}
+ ]},
+{ids:["camba"],
+ paras:[
+  "Chequamegon country in northern Wisconsin is where one of the country's biggest mountain bike events began. In September 1983, 27 riders set off from Hayward on a 40-mile ride through the forest. Tony Wise, who had started the American Birkebeiner ski race a decade earlier, and Gary Crandall helped begin it, and the Chequamegon Fat Tire Festival grew into one of the largest events of its kind. The Chequamegon Area Mountain Bike Association (CAMBA) grew up around it and now maps more than 300 miles of trail, in clusters around Hayward, Cable, Drummond, Delta, Seeley and Namakagon. Of everything in the table, this row has the biggest question mark. Its daily figure cannot be traced to the page of the compilation it was read from, so it is tiered Low and flagged until someone reads the original UW–River Falls report."
+ ],
+ links:[
+  {t:"Mountain Bike Hall of Fame: Gary Crandall",u:"https://mmbhof.org/mountain-bike-hall-of-fame/2003/gary-crandall/"},
+  {t:"Duluth News Tribune: the festival at 30",u:"https://www.duluthnewstribune.com/sports/in-its-30th-year-chequamegon-fat-tire-festival-is-riding-high"}
+ ]},
+{ids:["helena"],
+ paras:[
+  "Helena's trails are a land-trust story. Mount Helena and Mount Ascension are city parks on the hills above the state capital, and much of the ground under the Mount Ascension trails was put together parcel by parcel by the Prickly Pear Land Trust, which has been buying land and donating it to the city since 1995. Its Backdrop Initiative, from 2006 to 2015, finished when the city took ownership of the last four parcels in December 2015. For years the land trust was also the city's trail maintenance partner, from 2001 to 2022; since 2023 the city does all of it, and the Forest Service manages roughly 30 miles of trail in the wider South Hills. For a visitor that adds up to something uncommon: a mountain bike network that starts in a state capital's neighborhoods. The row comes from a University of Montana tourism study that this tool read through a Trust for Public Land compilation."
+ ],
+ links:[
+  {t:"Prickly Pear Land Trust: Mount Ascension",u:"https://pricklypearlt.org/mount-ascension-natural-park/"}
+ ]},
+{ids:["gmug"],
+ paras:[
+  "The GMUG is three national forests run as one, the Grand Mesa, Uncompahgre and Gunnison, spread across western Colorado. This row averages four very different places inside it: Grand Junction, Crested Butte, a West Slope area and Ouray. That is why the range is wide. It spans four places, so it is not one uncertain number about one place. Crested Butte is the old guard of the group. Its locals credit the Pearl Pass Klunker Tour over the mountains to Aspen, first run in 1976, as a founding moment of mountain biking, though accounts disagree on details of the date and the story, and calling the town the sport's birthplace is a local claim rather than an official one. The study was done by Eastern Kentucky University researchers for Outdoor Alliance in 2018, while the two forests were in the middle of rewriting their management plans."
+ ],
+ links:[
+  {t:"Outdoor Alliance: the GMUG reports",u:"https://www.outdooralliance.org/blog/2018/11/28/gmug-economic-reports-press-release"},
+  {t:"Mountain Bike Hall of Fame: Crested Butte history",u:"https://mmbhof.org/?p=3656"}
+ ]},
+{ids:["manti-lasal"],
+ paras:[
+  "Manti-La Sal is a national forest in pieces. It spans central and southeastern Utah and reaches into the far west of Colorado, and its best-known mountain bike terrain is the La Sal Mountains above Moab. If you have ridden the upper sections of Moab's Whole Enchilada, you have ridden in this forest. That is the main thing to understand about the row: it is the Forest Service piece of the Moab riding economy, not a trail town of its own, and much of the spending a study like this counts lands in the gateway towns around the forest. The study was done for Outdoor Alliance by Eastern Kentucky University researchers, who were making the case for human-powered recreation as the Forest Service revised its management plan for the next 20 to 30 years."
+ ],
+ links:[
+  {t:"Outdoor Alliance: Manti-La Sal reports",u:"https://www.outdooralliance.org/manti-la-sal-economic-reports"},
+  {t:"IMBA: measuring impact, Moab and beyond",u:"https://www.imba.com/blog/measuring-impact-moab-and-beyond"}
+ ]},
+{ids:["eastern-trail"],
+ paras:[
+  "The Eastern Trail is not a mountain bike trail at all. It is a multi-use trail through southern Maine, about 65 miles from Kittery to South Portland, following the old Eastern Railroad corridor. Volunteers began advocating for it in 1998 and the Eastern Trail Alliance was incorporated in 1999; in 2022 the trail was inducted into the Rail-Trail Hall of Fame, helped along by a Camoin Associates economic study. It sits in a table about mountain biking as a comparison point: what does a heavily used, non-technical trail bring in? The thing to watch is how usage is counted. Coverage quotes about a quarter of a million users a year, but the analysts describe that as user-days, not unique people, and dividing a total by the wrong one changes a daily spending figure a great deal."
+ ],
+ links:[
+  {t:"Camoin Associates: Eastern Trail study",u:"https://camoinassociates.com/projects/economic-impact-analysis-of-maines-eastern-trail-helps-support-hall-of-fame-induction/"},
+  {t:"Mainebiz on the Eastern Trail",u:"https://mainebiz.biz/article/eastern-trail-brings-national-kudos-and-growing-dollars-to-southern-maine"}
+ ]},
+{ids:["pikes-overnight","pikes-daytrip"],
+ paras:[
+  "Pikes Peak anchors the Colorado Springs region. These figures come from planning, not tourism research: the Pikes Peak Area Council of Governments adopted its Regional Nonmotorized Modes Plan in July 2015, after a study guided by Steer Davies Gleave (now Steer) from 2013 to 2015, and one piece of that plan was a report on the economic impact of cycling. The Trails and Open Space Coalition, a regional advocacy group formed in 1987, is named in the row's citation. Because the study counts road and recreational cycling together, these rows are general cycling, not mountain biking, which is why they appear only when “MTB studies only” is unticked. The local figure is the quiet lesson: what a resident's ordinary bike ride costs is close to nothing."
+ ],
+ links:[
+  {t:"Steer: the Pikes Peak active modes plan",u:"https://in.steergroup.com/node/808"},
+  {t:"Bicycle Colorado: Trails and Open Space Coalition",u:"https://www.bicyclecolorado.org/advocacy-group/trails-and-open-space-coalition/"}
+ ]},
+{ids:["central-ohio"],
+ paras:[
+  "Central Ohio's trail network is a regional commuting and recreation system around Columbus, built by many local governments and stitched together by the Mid-Ohio Regional Planning Commission and the Central Ohio Greenways group. It ran to roughly 230 miles at last count, against a regional vision of about 730. This row comes from the study of trail impacts commissioned in 2014, which used counts, surveys and property values, and it measured residents only, so there is no non-local figure at all. It is in the table to show something other studies hide: what incidental spending looks like when there is no tourism draw. Residents spent from a few dollars to about twenty a visit. Keep that beside the destination figures elsewhere in the table, and the difference between a trail people use and a trail people travel to is easy to see."
+ ],
+ links:[
+  {t:"MORPC: Impact of trails summary",u:"https://www.morpc.org/2023/wp-content/uploads/2023/11/Impact-of-Trail-Summary-Final-Document-.pdf"},
+  {t:"IMBA: Impacts of Central Ohio Trails",u:"https://ride.imba.com/resource/impacts-central-ohio-trails"}
+ ]},
+{ids:["james-river"],
+ paras:[
+  "The James River Park System runs along the river through the middle of Richmond, Virginia, and its mountain bike trails are a volunteer story. A group of riders who became rvaMORE, the Mid-Atlantic Off-Road Enthusiasts, began building by hand and later learned proper trail construction from IMBA. The trails, such as Buttermilk and Belle Isle, sit inside a city park, so the people on them are mostly residents who live a short ride away rather than travelers. That is why the row says so little about mountain bikers. The figure is borrowed from a generic Virginia State Parks report, not measured on this park's visitors, and is tiered Low. An urban park like this shows the limits of a “visitor spending” frame."
+ ],
+ links:[
+  {t:"Richmond Magazine: A Wild Ride",u:"https://richmondmagazine.com/news/sunday-story/a-wild-ride/"},
+  {t:"James River Park System: trails",u:"https://jamesriverpark.org/trails/"}
+ ]},
+{ids:["bentonville"],
+ paras:[
+  "Bentonville answers a question the rest of this table keeps asking: what happens when someone with capital decides a place should be a mountain bike town? It is the world headquarters of Walmart, a small city that had hosted business travelers for decades. The trail story is usually traced to Tom Walton and the Walton Family Foundation. The first phase of the Slaughter Pen system, about five miles built by a local nonprofit, the Trailblazers, and paid for by the Foundation, opened in 2007, on land that, by one account, the family had built trails on and later gave to the city. Expansions followed in 2010 and 2012, and in 2013 Slaughter Pen was connected to downtown, which the Trailblazers' chief executive describes as the point when use took off. The Back 40 system followed, reached by the Razorback Greenway, a paved path that runs through Slaughter Pen and past the Crystal Bridges museum.",
+  "The second turning point was 2016, when Bentonville was chosen to host the IMBA World Summit, which the Trailblazers' chief executive calls the moment it became a tourist destination. “Mountain Bike Capital of the World” is branding, and one local blog calls it a bold claim; IMBA's Ride Center list rates the city Silver-level. Mileage quoted for the system varies by source and year, from the teens to the dozens, so none is given here. What is not in dispute is the shape of the thing: the trails are connected to the town, and the same source says that link to downtown is what made the system far more used.",
+  "That is also why this row sits where it does. It is tiered Low and marked not MTB-specific: it comes from a 2023 University of Arkansas study of bicycling across Northwest Arkansas, road, gravel, paths and singletrack together, with an earlier 2018 study by BBC Research covering the same ground. The figure is a statewide Arkansas tourism-average stay applied to bicycling visitors identified through device data, then halved by this tool to a daily number, not a survey of mountain bikers. Both studies were commissioned by the Walton Family Foundation, which also helped pay for much of the trail. That is not a reason to doubt them, but it is context a reader should have when a number from this place is used to argue for building trails somewhere else."
+ ],
+ links:[
+  {t:"University of Arkansas: the 2023 report",u:"https://news.uark.edu/articles/64528/new-report-shows-health-and-economic-benefits-of-biking-in-nwa"},
+  {t:"Talk Business: the 2023 study",u:"https://talkbusiness.net/2023/06/study-biking-generates-159m-in-economic-impact-in-northwest-arkansas/"},
+  {t:"Singletracks: how Slaughter Pen carved Bentonville's future",u:"https://www.singletracks.com/mtb-trails/from-steak-to-singletrack-how-bentonvilles-slaughter-pen-trails-helped-carve-its-future/"}
+ ]},
+{ids:["nelson-nz"],
+ paras:[
+  "Nelson sits at the top of New Zealand's South Island, and its mountain biking is old and entrenched: the city says it goes back more than 30 years, and the region is one of six Gold-level IMBA Ride Centers in the world. Riders use council reserves, conservation land, private forest and, since a 2024 agreement between Nelson City Council and Ngāti Koata, the Waitarake, Koata Park and Fringed Hill areas. One famous ride, the Dun Mountain Trail, follows the route of New Zealand's first railway. This is the one foreign study in the data, which is why it is listed here but not charted: its figure is in New Zealand dollars. It is also an honest cautionary tale. The report's daily figure is an assumption, not a measurement, and the authors' own recommendation was that the council commission a rider survey. Nelson shows what a large headline number can rest on."
+ ],
+ links:[
+  {t:"Nelson City Council: mountain biking",u:"https://nelson.govt.nz/5community/2recreation/mountain-biking"},
+  {t:"Nelson Tasman on Open Trails",u:"https://www.opentrails.co.nz/regions/nelson-tasman"}
+ ]},
+];
+
 /* ==== THEMES REGISTRY — the single source of truth for every color theme.
    TO ADD A THEME: add ONE entry here, then add a matching CSS [data-theme]
    block above. Those two, and nothing else — the switch, the theme-color meta,
@@ -1166,6 +1374,9 @@ const HASH_ALIASES=[
    viewLabel  the Linear / Log / Range switch's label and accessible name.
    laneNonlocal / laneLocal / laneEmpty / rangeAria   the Range view's lane titles,
               the line printed in a lane with nothing in it, and the plot's name.
+   storyBtn / storyAria / storyNote / storyLinks   the Sources tab's place-story chevron,
+              its accessible name ({site} is the row's name), the line that says what
+              a story is NOT, and the label before its links.
    showNote / showAllNotes / hideAllNotes   the Sources tab's note folds. */
 const UI_TEXT={
   showing:"Showing {n} of {total}",
@@ -1177,6 +1388,9 @@ const UI_TEXT={
   laneNonlocal:"Non-local / out-of-town", laneLocal:"Local / resident",
   laneEmpty:"No figure reported in the studies shown.",
   rangeAria:"Every reported figure on a log scale, non-local above local",
+  storyBtn:"The story", storyAria:"The story of {site}",
+  storyNote:"Background on the place, written by Claude from public web sources. It is not part of the study and not one of the sourced figures.",
+  storyLinks:"Where it comes from:",
   showNote:"Show note",
   showAllNotes:"Show all notes", hideAllNotes:"Hide all notes",
 };
@@ -1619,6 +1833,39 @@ function srcValueCell(s,key,label){
   const calc=s.calc?' <span class="calcflag" title="Claude-assisted calculation — see the note">calc</span>':'';
   return `<td class="srcval" ${at}>${v}<span class="unitbadge">${UNIT_META[s.unit]}</span>${calc}</td>`;
 }
+// ---- place stories (see STORIES) -------------------------------------------------
+const STORY_BY_ID=Object.fromEntries(STORIES.flatMap(st=>st.ids.map(id=>[id,st])));
+const CHEVRON_ICON=`<svg class="chev" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>`;
+// The chevron that opens a row's story, or "" when the row has none. It sits in the
+// SITE cell so it reads as part of the row's name, on a phone and in the table.
+function storyBtn(s){
+  if(!STORY_BY_ID[s.id]) return "";
+  const label=UI_TEXT.storyAria.replace("{site}",s.site);
+  return `<div class="storybtnwrap"><button type="button" class="storybtn" aria-expanded="false" aria-controls="story-${esc(s.id)}" aria-label="${esc(label)}"><span>${esc(UI_TEXT.storyBtn)}</span>${CHEVRON_ICON}</button></div>`;
+}
+// The story itself: a whole extra table row directly under its study, hidden until
+// the chevron opens it. A row, not text inside the Site cell, because that column
+// is ~150px wide on a desktop and a three-paragraph story would be a tall thin
+// ribbon. Links are the same http(s)-only rule as everywhere else in the tool.
+function storyRow(s){
+  const st=STORY_BY_ID[s.id];
+  if(!st) return "";
+  const links=(st.links||[]).filter(l=>/^https?:\/\//i.test(l.u||"")).map(l=>
+    `<a class="srclink" href="${esc(l.u)}" target="_blank" rel="noopener noreferrer">${esc(l.t)}<span class="srclink-icon" aria-hidden="true">${SRC_LINK_ICON}</span><span class="sr-only"> (opens in a new tab)</span></a>`
+  ).join(" · ");
+  return `<tr class="storyrow" id="story-${esc(s.id)}" hidden><td colspan="6" class="storycell"><div class="storytext">`+
+    st.paras.map(t=>`<p>${esc(t)}</p>`).join("")+
+    `<p class="storymeta">${esc(UI_TEXT.storyNote)}${links?` ${esc(UI_TEXT.storyLinks)} ${links}`:""}</p></div></td></tr>`;
+}
+function wireStoryButtons(container){
+  container.querySelectorAll(".storybtn").forEach(b=>{
+    b.addEventListener("click",()=>{
+      const open=b.getAttribute("aria-expanded")!=="true";
+      b.setAttribute("aria-expanded",String(open));
+      document.getElementById(b.getAttribute("aria-controls")).hidden=!open;
+    });
+  });
+}
 // A study's note, folded. The notes are the longest text in the tool (one runs to
 // ~250 words) and a phone user scrolling for a citation has to wade through every
 // one of them. They are still on the page, in the DOM, one tap away, and Chrome
@@ -1649,13 +1896,13 @@ function renderSources(container){
         : `<td class="srcval" ${at}>${esc(v)}<span class="unitbadge">${UNIT_META[s.unit]}</span><span class="unitbadge">${esc(s.cur)}</span></td>`;
     };
     foreignRows+=`<tr>
-      <td class="srccell-site">${esc(s.site)} (${esc(s.st)}, ${s.yr})</td>
+      <td class="srccell-site">${esc(s.site)} (${esc(s.st)}, ${s.yr})${storyBtn(s)}</td>
       ${cell("nl","Non-local")}
       ${cell("lo","Local")}
       <td data-label="Confidence">${tierBadge(s.conf)}</td>
       <td data-label="Source">${srcCell(s)}</td>
       <td data-label="Note">${noteCell(s)}</td>
-    </tr>`;
+    </tr>${storyRow(s)}`;
   });
   let srcRows="";
   const srcSites=visibleSites();
@@ -1664,13 +1911,13 @@ function renderSources(container){
     // data-label is what the phone layout prints in place of the column heading
     // it doesn't have — see the CSS note on .srctable.
     srcRows+=`<tr>
-      <td class="srccell-site">${esc(s.site)} (${esc(s.st)}, ${s.yr})${s.mtb==='n'?' <em>— not MTB-specific</em>':''}</td>
+      <td class="srccell-site">${esc(s.site)} (${esc(s.st)}, ${s.yr})${s.mtb==='n'?' <em>— not MTB-specific</em>':''}${storyBtn(s)}</td>
       ${srcValueCell(s,"nl","Non-local")}
       ${srcValueCell(s,"lo","Local")}
       <td data-label="Confidence">${tierBadge(s.conf)}</td>
       <td data-label="Source">${srcCell(s)}</td>
       <td data-label="Note">${noteCell(s)}</td>
-    </tr>`;
+    </tr>${storyRow(s)}`;
   });
   container.innerHTML=`
     <div class="srcnote">
@@ -1718,6 +1965,7 @@ function renderSources(container){
       <ul class="excludelist">${exclusionRows}</ul>
     </details>
   `;
+  wireStoryButtons(container);
   // "Show all notes" / "Hide all notes": opens or closes every note at once.
   const all=document.getElementById("notesAll");
   all.addEventListener("click",()=>{
