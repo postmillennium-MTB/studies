@@ -31,7 +31,7 @@ smoothing over the three things that make them hard to compare:
 | **MTB studies only** | Hides the 6 general-cycling / paved-trail comparison entries |
 | **Show ranges** | Draws the high bound where a source gave a range instead of one number |
 | **Confidence** chips | Show or hide each tier |
-| **Scale: Linear / Log** (By Site) | Linear draws bars from $0 to $650. Log draws dots on a log axis ($2 to $800) with gridlines; a ranged figure is a line between two dots. Log spreads the low end out; it is never drawn as bars, because a log axis has no zero |
+| **View: Linear / Log / Range** (By Site) | **Linear** draws bars from $0 to $650. **Log** draws the same rows as dots on a log axis ($2 to $800) with gridlines; it is never drawn as bars, because a log axis has no zero. **Range** is the original Range plot: every figure from every study on one log axis, non-local above local, each reported range drawn as a dot, a line and a dot. Every dot is labeled with its site and unit |
 | **By Site** tab | Paired non-local / local marks, one row per site, one shared dollar axis |
 | **Sources** tab | Why units aren't normalized, tier definitions, the citation table (each note folds behind *Show note*; *Show all notes* opens them), then two folded sections: studies held out for currency, and deliberate exclusions |
 | **Theme switch** (top right) | Four palettes: **Ledger** (cream, the default), **Neon** (1990s blacklight), **Daylight** (cool white, orange/blue — the most colorblind-safe) and **Dusk** (warm dark, low glare). Swatches only on a phone, names from 760px up. Remembered per browser; the tool works fine if that storage is blocked |
@@ -54,7 +54,8 @@ Every tab has its own address, and the Share button builds it for you:
 | Link | Opens on |
 |---|---|
 | `…/studies/` | By Site |
-| `…/studies/#range` | By Site on the Log scale (this was the Range tab until it became a scale setting; old links still work) |
+| `…/studies/#range` | By Site, Range view (this was its own tab; old links still land on the same plot) |
+| `…/studies/#log` | By Site, Log view |
 | `…/studies/#sources` | Sources |
 
 These work through the PMR wrapper page, which forwards the hash into the frame

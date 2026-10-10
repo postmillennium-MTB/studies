@@ -186,6 +186,9 @@ tidy up reintroduces the bug.
   wide, so the same dollar amount drew up to ~27% longer or shorter depending on the
   row. The Log axis row reads the same `--lab-w` / `--val-w` so its ticks land over the
   tracks. Widen the variable if a value overflows; never let the column size itself.
+- **The Range view is SVG measured at render time, and the 22 is the card.** `renderRangeView` takes the panel's width minus 22 (the `.rangewrap` card's 10px padding and 1px border, both sides). Change that padding and change the 22. It redraws only when the width really changes (a rotation), not when a phone's address bar resizes its height; the tap targets are invisible 13px circles drawn LAST in each lane so no label or dot paints over them.
+- **Every dot in the Range view is labeled with its unit.** The old Range tab's bare dots broke the rule that every value carries its unit. `fitLabel` shortens the NAME to fit and never drops the unit.
+- **`#range` is the Range view, `#log` is the Log view.** `#range` was briefly pointed at Log during Pass 2, which was wrong: existing links to it meant the two-lane plot.
 - **The Log axis draws dots, never bars.** A bar's length is its value from a baseline,
   and a log axis has no zero, so a log-scaled bar's length means nothing. Dots claim
   only a position, which is all a log axis can honestly give.
