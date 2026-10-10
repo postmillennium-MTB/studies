@@ -44,7 +44,9 @@
     · renderBySite() .............. "By Site" tab: paired local/non-local marks,
                                      bars (Linear) or dots (Log)
     · renderRangeView() ........... the Range view: every figure in two lanes,
-                                     SVG, dots labeled with site and unit
+                                     SVG; unit always beside a dot,
+                                     study name on row hover or via the
+                                     "Show study names" checkbox
     · renderSources() ............. "Sources" tab (methodology, tiers, citations)
     · theme switch ................ applyTheme / buildThemeSwitch
     · share ....................... shareUrl / wireShare — native sheet, then
@@ -126,7 +128,9 @@
    ============================================================================ */
 :root{
   --paper:#f4ede1;       /* page background — warm ledger-paper cream */
-  --ink:#2b2420;         /* primary text */
+  --ink:#40372f;         /* primary text. Was #2b2420, which read as near-black on the cream;
+                            this is a soft dark brown-grey, still 10.0:1 on --paper and 11.2:1 on
+                            --card, and clearly darker than --ink-soft (the hierarchy survives). */
   --ink-soft:#5c5148;    /* secondary text */
   --line:#d8cbb6;        /* hairlines, card borders */
   --card:#fffaf2;        /* card background, slightly lighter than paper */
@@ -154,7 +158,7 @@
   --badge-ink:#fff;      /* text inside a filled tier badge */
   --track-bg:#00000008;  /* the empty part of a bar track */
   --chip-bg:#00000010;   /* unit badge, "archived" flag */
-  --tip-bg:#2b2420;      /* tooltip — inverted against the page in this theme */
+  --tip-bg:#40372f;      /* tooltip — inverted against the page in this theme, so it follows --ink */
   --tip-ink:#f4ede1;
   --tip-strong:#fff;
   --tip-note:#d9cdbd;
@@ -241,7 +245,7 @@
 }
 /* ==== THEME PALETTE — "Daylight" (third theme; light, cool, built to be read). =
    The reading theme: near-white cool paper, a card that is pure white, and ink
-   that is 16:1 against both. Where the Ledger is warm printed matter, this is a
+   that is 11:1 against both (a soft slate, not black). Where the Ledger is warm printed matter, this is a
    clean screen, and its job is plain legibility in bright light (a phone on a
    trailhead at noon).
 
@@ -265,7 +269,7 @@
    ============================================================================ */
 [data-theme="daylight"]{
   --paper:#eef2f6;
-  --ink:#101820;
+  --ink:#2a343e;         /* was #101820 (near-black); 11.3:1 on --paper, 12.7:1 on --card */
   --ink-soft:#43515e;
   --line:#bcc8d4;
   --card:#ffffff;
@@ -279,7 +283,7 @@
   --badge-ink:#fff;
   --track-bg:#0f1c2a0d;
   --chip-bg:#0f1c2a14;
-  --tip-bg:#101820;
+  --tip-bg:#2a343e;      /* follows --ink, as in the Ledger */
   --tip-ink:#eef2f6;
   --tip-strong:#fff;
   --tip-note:#c5d0da;
@@ -617,6 +621,15 @@ a{color:var(--accent)}
 .rangewrap{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px 4px;box-shadow:var(--card-glow)}
 .rangesvg{display:block;width:100%}
 .stripdot{cursor:pointer}
+/* Each Range row is one <g class="striprow">. At rest only the unit shows beside
+   a dot; pointing anywhere on the row reveals the study name and tints the row.
+   No transition on purpose: a name that fades in lags behind a cursor sweeping
+   down the plot and leaves several half-visible at once. On a touch screen there
+   is no hover, and tapping a dot opens the tooltip, which names the study. */
+.striphover{fill:transparent}
+.striprow:hover .striphover{fill:var(--chip-bg)}
+.stripname{opacity:0}
+.striprow:hover .stripname,.rangesvg.shownames .stripname{opacity:1}
 /* The tick labels, aligned to the tracks by sharing --lab-w / --val-w with the
    rows. Sticky so the scale stays in view while you read down fifteen sites; if a
    host page makes that impossible it simply scrolls away like any header. */
@@ -832,6 +845,8 @@ footer a:hover{text-decoration-thickness:2px}
     <div class="filterbody" id="filterBody" hidden>
       <label><input type="checkbox" id="mtbOnly" checked> MTB studies only</label>
       <label id="rangesControl"><input type="checkbox" id="showRanges" checked> Show ranges</label>
+      <!-- Range view only — setTabControls() shows it when the active view has names. -->
+      <label id="namesControl" style="display:none"><input type="checkbox" id="showNames"> Show study names</label>
       <!-- Confidence toggles are BUILT FROM CONF_META by buildTierFilters(). -->
       <span class="tierfilter" id="tierFilter"></span>
       <span class="note" id="filterNote">Bars and dots plot the dollar figure exactly as each study reported it. Studies measure different things — a day, a night, a trip, a whole visit — so a unit badge sits on every value. Don't read two different units as directly comparable; that inconsistency is itself part of the story (see Sources tab).</span>
@@ -1092,6 +1107,8 @@ const TABS=[
 /* ==== AXES — the views By Site can draw. The first is the default. ===========
      id      "linear" | "log" | "range" — read by renderBySite / barLine, so a new
              one also needs a branch there; this registry only names and describes it
+     names   true if the view has study names to show, which makes the filter bar's
+             "Show study names" checkbox appear while it is the active view
      label   the button text
      note    the one line printed above the chart saying what the geometry MEANS.
              A log axis in particular cannot be read without being told.
@@ -1102,7 +1119,7 @@ const TABS=[
 const AXES=[
   {id:"linear", label:"Linear", note:"Bars run from $0 to $650. Compare only bars with the same unit badge."},
   {id:"log",    label:"Log",    note:"Log scale: each gridline is 10× the last, so equal spacing means equal ratio, not equal dollars. Compare only the same unit badge."},
-  {id:"range",  label:"Range",  note:"Every figure on one log scale, non-local above local. A line joins the two ends of a reported range. The unit follows each name — compare only the same unit."},
+  {id:"range",  label:"Range",  names:true, note:"Every figure on one log scale, non-local above local. A line joins the two ends of a reported range. Point at a row for the study name (tap a dot on a phone), or tick Show study names under Filters. Compare only figures with the same unit."},
 ];
 
 /* ==== HASH_ALIASES — addresses that open a particular VIEW of a tab, not a
@@ -1122,6 +1139,7 @@ const HASH_ALIASES=[
      showing    "{n} of {total}" counts the figures the filters let through
      mtbOn / mtbOff        the MTB-only filter's state
      rangesOff             printed only when ranges are hidden (on is the default)
+     namesOn               printed only when Show study names is ticked (off is the default)
      tiersAll / tiersSome  the confidence filter's state; {list} is the letters
    tabsLabel  the accessible name of the tab bar.
    viewLabel  the Linear / Log / Range switch's label and accessible name.
@@ -1131,7 +1149,7 @@ const HASH_ALIASES=[
 const UI_TEXT={
   showing:"Showing {n} of {total}",
   mtbOn:"MTB only", mtbOff:"all studies",
-  rangesOff:"ranges hidden",
+  rangesOff:"ranges hidden", namesOn:"names shown",
   tiersAll:"all tiers", tiersSome:"tiers {list}",
   tabsLabel:"Views",
   viewLabel:"View",
@@ -1171,8 +1189,8 @@ const LOG_TICKS_NARROW=[10,100,500];             // fewer on a phone: at ~170px 
 const STRIP_ROW_H=24;           // Range view: height of one site's row, px. Dot (12) plus a 12px label
 const STRIP_DOT_R=6;            // Range view: dot radius, px
 const STRIP_DOT_R_HI=5;         // the paler, smaller dot at the high end of a reported range
-const STRIP_HIT_R=13;           // radius of the invisible circle that takes the tap — a 6px dot is a poor
-                                 // thing to land a thumb on
+const STRIP_HIT_R=12;           // radius of the invisible circle that takes the tap — a 6px dot is a poor
+                                 // thing to land a thumb on. Half a row (STRIP_ROW_H/2), so neighbours' circles never overlap
 const STRIP_PAD=14;             // left and right margin inside the plot, so an edge dot is not clipped
 const STRIP_CHAR_PX=6.6;        // average width of one 12px label character, used to decide how many fit
                                  // beside a dot. A little generous on purpose: too wide just truncates early
@@ -1184,6 +1202,7 @@ const WIDE_MIN_PX=640;          // the one phone/desktop breakpoint the script n
 let activeTab=TABS[0].id;
 let filterMtbOnly=true;
 let filterShowRanges=true;
+let filterShowNames=false;   // Range view only: print every study name at once, not just the hovered row's
 let axisMode=AXES[0].id;   // an AXES id; a deep link (HASH_ALIASES) can set it before first paint
 const filterTiers=Object.fromEntries(Object.keys(CONF_META).map(k=>[k,true]));
 
@@ -1465,12 +1484,12 @@ function wireBarEvents(container){
    the two ends of a reported range. It is drawn as SVG at the panel's measured
    pixel width so text and dots stay at their real size on a phone, and redrawn
    when the width really changes (see the resize handler).
-   WHAT IS NEW: each row now says WHICH site it is. The old tab's dots were
+   WHAT IS NEW: each row can say WHICH site it is. The old tab's dots were
    anonymous — you could see a cluster at $140 and not know it was Coldwater — and
-   it stacked 40 rows in a 977px column. The label sits beside its dot, on
-   whichever side has more room, and ends in the unit (so every figure still
-   carries its unit, which the old tab's bare dots did not). Names are truncated to
-   fit; the tooltip has the full one. ======================================== */
+   it stacked 40 rows in a 977px column. Every dot carries its UNIT beside it at
+   all times (the old tab's bare dots did not); the study NAME appears only while
+   the row is pointed at, because fifteen names at once made the plot a wall of
+   text. Names are truncated to fit; the tooltip has the full one. ======================================== */
 let stripW=0;   // the width the Range view was last drawn at, for the resize handler
 function renderRangeView(container,rows){
   let html=viewHeadHtml();
@@ -1497,7 +1516,10 @@ function renderRangeView(container,rows){
     ticks.forEach(t=>{
       svg+=`<text x="${x(t)}" y="${headY+32}" font-size="12" fill="var(--ink-soft)" text-anchor="middle">$${t}</text>`;
     });
-    // zebra bands first so gridlines and dots draw over them
+    // Layer 1: the zebra bands. Layer 2: the gridlines, over them. Layer 3: the rows
+    // themselves, each ONE <g class="striprow"> — its hover rectangle, its dots, its
+    // labels and its tap circles together — so that pointing at ANY part of a row,
+    // including the empty stretch beside the dots, reveals that row's study name.
     items.forEach((r,i)=>{
       if(i%2===0) svg+=`<rect x="0" y="${rowsTop+i*STRIP_ROW_H}" width="${W}" height="${STRIP_ROW_H}" fill="var(--track-bg)"/>`;
     });
@@ -1505,40 +1527,45 @@ function renderRangeView(container,rows){
       svg+=`<line x1="${x(t)}" y1="${rowsTop-4}" x2="${x(t)}" y2="${rowsTop+rowsH}" stroke="var(--line)" stroke-width="1"/>`;
     });
     if(!items.length) svg+=`<text x="${STRIP_PAD}" y="${rowsTop+16}" font-size="12" font-style="italic" fill="var(--ink-soft)">${esc(UI_TEXT.laneEmpty)}</text>`;
-    let hits="";
     items.forEach((r,i)=>{
-      const cy=rowsTop+i*STRIP_ROW_H+STRIP_ROW_H/2;
+      const top=rowsTop+i*STRIP_ROW_H, cy=top+STRIP_ROW_H/2;
       const lo=r[lane.key], hi=(filterShowRanges && r[lane.hi]!=null) ? r[lane.hi] : null;
       const xLo=x(lo), xHi=hi!=null ? x(hi) : xLo;
-      if(hi!=null) svg+=`<line x1="${xLo}" y1="${cy}" x2="${xHi}" y2="${cy}" stroke="var(--${lane.cls})" stroke-width="2.5" opacity=".55"/>`;
-      svg+=`<circle cx="${xLo}" cy="${cy}" r="${STRIP_DOT_R}" fill="var(--${lane.cls})" stroke="var(--card)" stroke-width="1.5"/>`;
-      if(hi!=null) svg+=`<circle cx="${xHi}" cy="${cy}" r="${STRIP_DOT_R_HI}" fill="var(--${lane.cls})" opacity=".65" stroke="var(--card)" stroke-width="1.5"/>`;
-      // the label goes on the roomier side of the figure
+      const at=`data-site="${esc(r.id)}" data-which="${lane.key}"`;
+      let row=`<rect class="striphover" x="0" y="${top}" width="${W}" height="${STRIP_ROW_H}"/>`;
+      if(hi!=null) row+=`<line x1="${xLo}" y1="${cy}" x2="${xHi}" y2="${cy}" stroke="var(--${lane.cls})" stroke-width="2.5" opacity=".55"/>`;
+      row+=`<circle cx="${xLo}" cy="${cy}" r="${STRIP_DOT_R}" fill="var(--${lane.cls})" stroke="var(--card)" stroke-width="1.5"/>`;
+      if(hi!=null) row+=`<circle cx="${xHi}" cy="${cy}" r="${STRIP_DOT_R_HI}" fill="var(--${lane.cls})" opacity=".65" stroke="var(--card)" stroke-width="1.5"/>`;
+      // Beside the figure, on whichever side has more room. The UNIT is always
+      // there, hard against the dot; the study NAME sits beyond it and appears only
+      // while the row is pointed at (.stripname in CSS).
+      const unit=UNIT_META[r.unit], unitW=unit.length*STRIP_CHAR_PX;
       const roomL=xLo-STRIP_DOT_R-6-STRIP_PAD, roomR=(W-STRIP_PAD)-(xHi+STRIP_DOT_R+6);
       const onLeft=roomL>roomR;
-      const room=Math.max(onLeft?roomL:roomR,0);
-      svg+=`<text x="${onLeft ? xLo-STRIP_DOT_R-6 : xHi+STRIP_DOT_R+6}" y="${cy+4}" font-size="12" fill="var(--ink)" text-anchor="${onLeft?"end":"start"}" pointer-events="none">${esc(fitLabel(r.site,UNIT_META[r.unit],room))}</text>`;
-      const at=`data-site="${esc(r.id)}" data-which="${lane.key}"`;
-      hits+=`<circle class="stripdot" ${at} cx="${xLo}" cy="${cy}" r="${STRIP_HIT_R}" fill="transparent"/>`;
-      if(hi!=null) hits+=`<circle class="stripdot" ${at} cx="${xHi}" cy="${cy}" r="${STRIP_HIT_R}" fill="transparent"/>`;
+      const edge=onLeft ? xLo-STRIP_DOT_R-6 : xHi+STRIP_DOT_R+6;
+      const anchor=onLeft ? "end" : "start";
+      const dir=onLeft ? -1 : 1;
+      row+=`<text x="${edge}" y="${cy+4}" font-size="12" fill="var(--ink-soft)" text-anchor="${anchor}" pointer-events="none">${esc(unit)}</text>`;
+      const name=fitName(r.site, Math.max(onLeft?roomL:roomR,0)-unitW-8);
+      if(name) row+=`<text class="stripname" x="${edge+dir*(unitW+8)}" y="${cy+4}" font-size="12" font-weight="600" fill="var(--ink)" text-anchor="${anchor}" pointer-events="none">${esc(name)}</text>`;
+      row+=`<circle class="stripdot" ${at} cx="${xLo}" cy="${cy}" r="${STRIP_HIT_R}" fill="transparent"/>`;
+      if(hi!=null) row+=`<circle class="stripdot" ${at} cx="${xHi}" cy="${cy}" r="${STRIP_HIT_R}" fill="transparent"/>`;
+      svg+=`<g class="striprow">${row}</g>`;
     });
-    svg+=hits;   // the hit circles go last in each lane, so nothing draws over a tap target
     y=rowsTop+rowsH+14;
   });
-  html+=`<div class="rangewrap"><svg class="rangesvg" viewBox="0 0 ${W} ${y}" width="100%" role="img" aria-label="${esc(UI_TEXT.rangeAria)}">${svg}</svg></div>`;
+  html+=`<div class="rangewrap"><svg class="rangesvg${filterShowNames?" shownames":""}" viewBox="0 0 ${W} ${y}" width="100%" role="img" aria-label="${esc(UI_TEXT.rangeAria)}">${svg}</svg></div>`;
   container.innerHTML=html;
   wireAxisButtons(container);
   wireBarEvents(container);
 }
-// "Coldwater Bike Trail /day" cut to fit `room` pixels, name first. The unit is
-// never the part that is dropped: a figure with no unit is the thing this tool
-// refuses to show. Below ~6 characters of name it gives up on the name instead.
-function fitLabel(name,unit,room){
+// A study name cut to fit `room` pixels, with an ellipsis — or "" when there is no
+// room for even a few characters, in which case the row simply has no hover name
+// and the tooltip (which always has the full one) is the way to read it.
+function fitName(name,room){
   const chars=Math.floor(room/STRIP_CHAR_PX);
-  const tail=" "+unit;
-  const nameMax=chars-tail.length;
-  if(nameMax<4) return unit;
-  return (name.length>nameMax ? name.slice(0,nameMax-1).trimEnd()+"…" : name)+tail;
+  if(chars<5) return "";
+  return name.length>chars ? name.slice(0,chars-1).trimEnd()+"…" : name;
 }
 // One path in and out of an axis, shared by the buttons and by a deep link, for
 // the same reason as setActiveTab(): the state, the share href and the legend key
@@ -1546,6 +1573,7 @@ function fitLabel(name,unit,room){
 function setAxis(id){
   if(!AXES.some(a=>a.id===id) || id===axisMode) return;
   axisMode=id;
+  syncNamesControl();
   buildLegendTop();
   syncShareHref();
   if(activeTab==="bysite") renderActiveTab();
@@ -1782,6 +1810,7 @@ function updateFilterSummary(){
   ];
   const tab=TABS.find(t=>t.id===activeTab);
   if(tab && tab.ranges && !filterShowRanges) parts.push(UI_TEXT.rangesOff);
+  if(hasNames() && filterShowNames) parts.push(UI_TEXT.namesOn);
   parts.push(on.length===Object.keys(filterTiers).length
     ? UI_TEXT.tiersAll
     : UI_TEXT.tiersSome.replace("{list}", on.map(k=>k.toUpperCase()).join(", ")||"none"));
@@ -1844,6 +1873,17 @@ function setActiveTab(id){
 function setTabControls(tab){
   document.getElementById("rangesControl").style.display = tab.ranges ? "flex" : "none";
   document.getElementById("filterNote").style.display = tab.chart ? "" : "none";
+  syncNamesControl();
+}
+// True while the active view is one that has study names to show (AXES[].names).
+function hasNames(){
+  const tab=TABS.find(t=>t.id===activeTab), ax=AXES.find(a=>a.id===axisMode);
+  return !!(tab && tab.chart && ax && ax.names);
+}
+// The "Show study names" checkbox belongs to a VIEW, not a tab, so it is re-synced
+// whenever either changes: from setTabControls() and from setAxis().
+function syncNamesControl(){
+  document.getElementById("namesControl").style.display = hasNames() ? "flex" : "none";
 }
 // Open or fold the filter controls. The button is a disclosure: aria-expanded
 // says which, aria-controls says what it governs.
@@ -1857,6 +1897,9 @@ function wireFilters(){
   });
   document.getElementById("showRanges").addEventListener("change",e=>{
     filterShowRanges=e.target.checked; renderActiveTab();
+  });
+  document.getElementById("showNames").addEventListener("change",e=>{
+    filterShowNames=e.target.checked; renderActiveTab();
   });
   const tog=document.getElementById("filterToggle");
   tog.addEventListener("click",()=>{
