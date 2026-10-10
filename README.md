@@ -33,7 +33,7 @@ smoothing over the three things that make them hard to compare:
 | **By Site** tab | Paired non-local / local bars, one row per site, shared linear $ axis |
 | **Range** tab | Log-scale strip plot of every reported figure |
 | **Sources** tab | Tier definitions, the citation table, deliberate exclusions |
-| **Theme switch** (top right) | Two palettes: **Ledger** (cream, the default) and **Neon** (1990s blacklight). Remembered per browser; the tool works fine if that storage is blocked |
+| **Theme switch** (top right) | Four palettes: **Ledger** (cream, the default), **Neon** (1990s blacklight), **Daylight** (cool white, orange/blue — the most colorblind-safe) and **Dusk** (warm dark, low glare). Swatches only on a phone, names from 760px up. Remembered per browser; the tool works fine if that storage is blocked |
 | **Share** (top right) | Copies or hands off the **PMR** URL, with the tab you are on appended |
 | **← PMR** (top left) | Back to the site. `target="_top"`, so it escapes the embed |
 

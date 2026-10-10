@@ -11,9 +11,12 @@
   <head> / <style> ............... top of file
     · PRE-PAINT THEME SHIM ........ the only logic outside the script block;
                                      see its own comment for why it must be here
-    · THEME PALETTES (CSS) ........ "Ledger" (default, cream) and "Neon"
-                                     (1990s blacklight). One CSS block each,
-                                     driven by the THEMES registry below.
+    · THEME PALETTES (CSS) ........ four: "Ledger" (default, cream), "Neon"
+                                     (1990s blacklight), "Daylight" (cool
+                                     white, colorblind-safe orange/blue) and
+                                     "Dusk" (warm low-glare dark). One CSS
+                                     block each, driven by the THEMES registry
+                                     below.
     · BASE + LAYOUT ............... body, utility bar, masthead, wrap, tab nav
     · CHART ELEMENTS .............. bars, dots, unit badges, tooltip, legend
     · CONTROLS .................... MTB-only toggle, reported-ranges toggle,
@@ -163,6 +166,7 @@
   --head-glow:none;          /* text-shadow; used alone, so "none" is fine */
   --head-transform:none;
   --head-spacing:-.01em;
+  --head-weight:700;
   /* The title face. A Ledger is printed matter, so its title is a serif; every
      name in the stack is already installed on the device it names, so there is
      nothing to load (no web font — the zero-dependency rule). It renders as
@@ -228,9 +232,112 @@
   --card-glow:0 0 0 1px #ffffff0a, 0 0 18px #c77dff1f;
   --head-glow:0 0 10px #ff2d9599, 0 0 22px #c77dff55;
   --head-transform:uppercase;
+  --head-weight:700;
   --head-spacing:.02em;      /* was .045em: at that tracking the uppercase title was
                                 wider than a phone and orphaned "LEDGER" */
   --head-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+/* ==== THEME PALETTE — "Daylight" (third theme; light, cool, built to be read). =
+   The reading theme: near-white cool paper, a card that is pure white, and ink
+   that is 16:1 against both. Where the Ledger is warm printed matter, this is a
+   clean screen, and its job is plain legibility in bright light (a phone on a
+   trailhead at noon).
+
+   SIDE COLORS: orange (non-local) and blue (local). That is the one pairing
+   that stays separable for the common red-green colorblindnesses — the Ledger's
+   rust/moss pair is within 1.15:1 of each other in luminance and is the classic
+   deuteranopia confusion. The mapping still follows the rule every theme keeps:
+   WARM = non-local, COOL = local.
+
+   CHROME IS GRAPHITE, NOT A HUE. --accent drives focus rings, links, the active
+   tab underline and the masthead rule, and it must never read as a result.
+   Here both data colors are saturated, so the accent is a neutral dark grey-blue
+   that cannot be mistaken for either.
+
+   TIER COLORS ARE NOT RED/AMBER/GREEN HERE. Amber and red would sit a few
+   degrees of hue from the orange non-local bars and read as the same thing.
+   Green / violet / crimson keeps all three clear of both data colors; the
+   letter and the word on every badge still carry the tier, as everywhere.
+
+   Every text color below clears WCAG AA (4.5:1) against both --paper and --card
+   (checked, not eyeballed — see the verification list in the PR). The two -soft
+   values are the hatch stripe only and carry no text.
+   ============================================================================ */
+[data-theme="daylight"]{
+  --paper:#eef2f6;
+  --ink:#101820;
+  --ink-soft:#43515e;
+  --line:#bcc8d4;
+  --card:#ffffff;
+  --accent:#3a4651;
+  --nonlocal:#b4430a;
+  --local:#0a5aa8;
+  --nonlocal-soft:#f1c6ad;
+  --local-soft:#b8d2ec;
+  --tier-v:#1b7a47;
+  --tier-m:#6a4aa8;
+  --tier-l:#a8204e;
+  --warn-bg:#fdeee4;
+  --badge-ink:#fff;
+  --track-bg:#0f1c2a0d;
+  --chip-bg:#0f1c2a14;
+  --tip-bg:#101820;
+  --tip-ink:#eef2f6;
+  --tip-strong:#fff;
+  --tip-note:#c5d0da;
+  --rule-bg:var(--accent);
+  --mast-rule:var(--ink);
+  --head-spacing:-.02em;
+  --head-weight:800;
+  --head-font:"Avenir Next","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+}
+
+/* ==== THEME PALETTE — "Dusk" (fourth theme; dark, warm, low-glare). ==========
+   The dark theme you can read for ten minutes. Neon is a poster; this is a
+   chart. Warm charcoal rather than blue-black, ink that is off-white rather than
+   white (pure white on near-black glares and halates for many eyes), no glow, no
+   uppercase, nothing that shimmers.
+
+   SIDE COLORS: amber (non-local) and sky blue (local) — warm/cool as everywhere,
+   and the same colorblind-safe axis as Daylight, brightened to hold up on a dark
+   ground. They are deliberately not Neon's magenta/cyan.
+
+   The tier colors are mint / lilac / rose, for the same reason as Daylight: an
+   amber "Medium" badge would be the non-local bar color. The accent is a pale
+   sand, chrome only (links, focus, the tab underline).
+
+   Every text color clears AA (4.5:1) against both --paper and --card.
+   The -soft pair is the darker second stripe of the hatched range; on a dark
+   ground it has to go DARKER than its bar color or the hatch flattens.
+   ============================================================================ */
+[data-theme="dusk"]{
+  --paper:#1b1a18;
+  --ink:#f0ebe2;
+  --ink-soft:#b9b1a3;
+  --line:#4d4840;
+  --card:#262420;
+  --accent:#e2d6bd;
+  --nonlocal:#ffb347;
+  --local:#5ab0ff;
+  --nonlocal-soft:#6a4818;
+  --local-soft:#1c4a78;
+  --tier-v:#4fd18b;
+  --tier-m:#b79cf0;
+  --tier-l:#ff7a90;
+  --warn-bg:#36281c;
+  --badge-ink:#1b1a18;   /* dark text on a bright badge, as in Neon */
+  --track-bg:#ffffff10;
+  --chip-bg:#ffffff16;
+  --tip-bg:#37332c;      /* floats ABOVE the card rather than inverting against it */
+  --tip-ink:#f0ebe2;
+  --tip-strong:#fff;
+  --tip-note:#cfc7b8;
+  --rule-bg:linear-gradient(90deg,#ffb347,#e2d6bd,#5ab0ff);
+  --mast-rule:#8a8068;
+  --card-glow:0 0 0 1px #ffffff0d;
+  --head-spacing:-.01em;
+  --head-weight:800;
+  --head-font:ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN","Nunito","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -272,21 +379,27 @@ a{color:var(--accent)}
   display:inline-flex;align-items:center;gap:2px;flex:none;
   background:var(--card);border:1px solid var(--line);border-radius:999px;padding:2px;
 }
+/* Mobile-first: on a phone each button is a swatch chip and nothing else. Four
+   labelled pills are ~340px wide and the bar has ~230px to give, so the names
+   (still in the DOM, and the button's aria-label) appear from 760px up. The
+   chips are 40px square — the touch-target floor — and the selected one gets an
+   accent ring as well as a fill, so it is never marked by a subtle tint alone. */
 .themebtn{
   appearance:none;cursor:pointer;font:inherit;font-size:.78rem;font-weight:700;
-  display:inline-flex;align-items:center;gap:5px;
-  min-height:36px;padding:4px 9px;border:1px solid transparent;border-radius:999px;
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  min-width:38px;min-height:40px;padding:4px 0;border:1px solid transparent;border-radius:999px;
   background:none;color:var(--ink-soft);white-space:nowrap;
 }
-.themebtn[aria-pressed="true"]{background:var(--paper);color:var(--ink);border-color:var(--line)}
+.themebtn-label{display:none}
+.themebtn[aria-pressed="true"]{background:var(--paper);color:var(--ink);border-color:var(--accent)}
 .themebtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* A split chip, not a single square: one color tells you nothing about a
-   palette, and these two palettes differ most in the pair that carries meaning. */
+   palette, and the palettes differ most in the pair that carries meaning. */
 /* The hairline is load-bearing, not decoration: the Ledger chip's second stop
    is the cream paper itself, which would otherwise vanish into the button. A
    translucent black works on both palettes — it darkens a pale edge and defines
    a bright one. */
-.themeswatch{width:14px;height:14px;border-radius:3px;flex:none;border:1px solid #00000022}
+.themeswatch{width:18px;height:18px;border-radius:4px;flex:none;border:1px solid #00000033}
 
 /* ── Share — see wireShare() for why this is an <a> and not a <button> ────── */
 .share-wrap{position:relative;display:inline-flex;flex:none}
@@ -321,7 +434,7 @@ a{color:var(--accent)}
 /* ── Masthead ─────────────────────────────────────────────────────────────── */
 .masthead{border-bottom:3px solid var(--mast-rule);padding:10px 0 12px;margin-bottom:14px}
 .masthead h1{
-  font-size:1.7rem;margin:0 0 6px;line-height:1.15;font-weight:700;
+  font-size:1.7rem;margin:0 0 6px;line-height:1.15;font-weight:var(--head-weight);
   /* Set by the active theme: the Ledger sets a serif face and leaves the
      transform and glow inert; the Neon palette swaps in a sans, uppercases,
      tracks out and lights the title. */
@@ -503,8 +616,11 @@ a{color:var(--accent)}
 .srcval{font-weight:700}
 .excludelist{font-size:.82rem;line-height:1.6}
 .srccount{font-weight:400;color:var(--ink-soft);font-size:.82em}
-.srclink{color:var(--accent);text-decoration:none;font-weight:600}
-.srclink:hover{text-decoration:underline}
+/* Underlined at rest, not only on hover: in Daylight the accent is a neutral
+   graphite, a few shades from the body ink, and a bold word that is merely
+   slightly different is not recognisable as a link. */
+.srclink{color:var(--accent);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;font-weight:600}
+.srclink:hover{text-decoration-thickness:2px}
 .srclink:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
 .srclink-icon{display:inline-flex;vertical-align:-2px;margin-left:4px}
 .origlink{white-space:nowrap;margin-left:2px}
@@ -516,8 +632,20 @@ a{color:var(--accent)}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 footer{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);font-size:.76rem;color:var(--ink-soft)}
-footer a{color:var(--accent);font-weight:600;text-decoration:none}
-footer a:hover{text-decoration:underline}
+footer a{color:var(--accent);font-weight:600;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}
+footer a:hover{text-decoration-thickness:2px}
+
+/* ── Theme names beside the swatches ──────────────────────────────────────────
+   Its OWN breakpoint, later than the 640px one below, and measured rather than
+   guessed: the four labelled pills are ~345px, and the full "Post Millennium
+   Renaissance" link (which appears at 640px) is ~200px, so together with the
+   share button they overflow a 640px screen by 2px and the page pans sideways.
+   From 760px there is room for all three. Between 640 and 760 the swatches stay
+   name-less beside the full PMR name. ─────────────────────────────────────── */
+@media(min-width:760px){
+  .themebtn{padding:4px 11px}
+  .themebtn-label{display:inline}
+}
 
 /* ── Mobile-first: this block widens things for larger screens ──────────────── */
 @media(min-width:640px){
@@ -787,7 +915,10 @@ const EXCLUSIONS=[
    not a single line.
      id        matches the CSS [data-theme="…"] selector, and is what gets
                written to localStorage
-     label     the visible text on the switch button
+     label     the theme's name: visible text on the switch button from 760px up,
+               and the button's accessible name at every width (on a phone the
+               switch is swatches only — four labelled pills do not fit beside
+               the PMR link and the share button)
      swatch /  the two stops of the preview chip. Two, not one, because a single
      swatch2   square tells you nothing about a palette — these are the paper
                and the color that most distinguishes the theme from its sibling.
@@ -800,6 +931,8 @@ const EXCLUSIONS=[
 const THEMES=[
   {id:"ledger", label:"Ledger", swatch:"#8a5a2b", swatch2:"#f4ede1", paper:"#f4ede1", scheme:"light"},
   {id:"neon",   label:"Neon",   swatch:"#ff2d95", swatch2:"#00e5ff", paper:"#0d0b1a", scheme:"dark"},
+  {id:"daylight", label:"Daylight", swatch:"#b4430a", swatch2:"#0a5aa8", paper:"#eef2f6", scheme:"light"},
+  {id:"dusk",    label:"Dusk",    swatch:"#ffb347", swatch2:"#1b1a18", paper:"#1b1a18", scheme:"dark"},
 ];
 const DEFAULT_THEME="ledger";
 /* localStorage is a PREFERENCE store here and nothing else: the tool works
@@ -1311,7 +1444,7 @@ function savedTheme(){
 function buildThemeSwitch(){
   const el=document.getElementById("themeSwitch");
   el.innerHTML=THEMES.map(t=>
-    `<button type="button" class="themebtn" data-theme="${esc(t.id)}" aria-pressed="false" title="${esc(t.label)} color scheme">`+
+    `<button type="button" class="themebtn" data-theme="${esc(t.id)}" aria-pressed="false" aria-label="${esc(t.label)} color scheme" title="${esc(t.label)} color scheme">`+
       `<span class="themeswatch" style="background:linear-gradient(135deg,${esc(t.swatch)} 50%,${esc(t.swatch2)} 50%)"></span>`+
       `<span class="themebtn-label">${esc(t.label)}</span>`+
     `</button>`
