@@ -266,14 +266,14 @@ the sessions that built this could not open external PDFs.
 - **Eastern Trail.** The row says $242.35/day; the Eastern Trail Alliance's own page
   says $118/day across 251,978 users. Roughly 2×. Possibly all-users vs.
   non-local-only, possibly a TPL transcription error. The highest-value thing to check.
-- **CAMBA is resolved, with a loose end.** The old $245.40/day (read through the TPL
-  Green Paper) could not be traced; the row now comes from the original Hadley &
-  Trechter 2020 report, whose Executive Summary gives $200/day *expected* spending by
-  non-local visitors (Table 1-3), tiered `V`. Two things to finish: the row cites the
-  table, not a **page number**, and the summary calls $200 "an average" while saying it
-  reports medians elsewhere, so check whether Table 1-3's $200 is the mean or the median.
-  The Green Paper's other CAMBA figures ($1,107 and $1,017.18 per visit) were not in
-  the Executive Summary and are unexplained; do not re-add the $245.40.
+- **CAMBA is resolved.** The old $245.40/day (read through the TPL Green Paper) could
+  not be traced, and neither it nor the Green Paper's $1,107 and $1,017.18 per visit
+  appears anywhere in the original report (searched all 101 pages). The row now comes
+  from Hadley & Trechter 2020, Table 1-3, p.16: $200/day, a **mean** (the column is
+  "Ave/Day"), *expected* spending by non-local visitors (n = 152), which the authors
+  derived as average trip spending ÷ (nights + 1) (footnote 11). Tiered `V`. Do not
+  re-add the $245.40. If the Green Paper is used for another site, remember it has now
+  been wrong once.
 - **Manti-La Sal author list.** Cited as "Maples, Rehm & Bradley 2022"; Outdoor
   Alliance names only Maples and Bradley. Unverified.
 - **Nelson–Tasman (BERL 2018) is the one row read against its source document.**

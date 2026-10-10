@@ -99,12 +99,13 @@ numbers, the field is left empty rather than estimated.
 
 ## Known open items
 
-- **Chequamegon / CAMBA is resolved, with one loose end.** It used to be tiered **Low**
-  with `PROVENANCE UNRESOLVED`: the $245.40/day read through the TPL Green Paper could
-  not be traced to anything. It now comes from Hadley & Trechter 2020 itself (Part I,
-  Executive Summary and Table 1-3), which reports $200 per day on average, *expected*
-  spending by non-local visitors, and the row is **Verified**. The loose end: the row
-  cites the table, not a page number. Add the page.
+- **Chequamegon / CAMBA is resolved.** It used to be tiered **Low** with
+  `PROVENANCE UNRESOLVED`: the $245.40/day read through the TPL Green Paper could not be
+  traced to anything, and it turns out that figure, and the Green Paper's two per-visit
+  numbers, appear nowhere in the original report. The row now comes from Hadley &
+  Trechter 2020 itself (Table 1-3, p.16): **$200/day**, a mean, *expected* spending by
+  non-local visitors, which the report's authors derived by dividing average trip
+  spending by days in the area (nights plus one). The row is **Verified**.
 - **`yr` is publication year.** Four rows previously carried a different year than the
   citation beside them and were corrected to the cited year (WVU ×2 → 2019,
   Manti-La Sal → 2022, Bentonville → 2023). If any of those were deliberately recording
