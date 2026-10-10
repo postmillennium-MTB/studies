@@ -2107,10 +2107,10 @@ function renderSources(container){
     </tr>${storyRow(s)}`;
   });
   container.innerHTML=`
-    <div class="srcnote">
-      <h3>Why units aren't normalized</h3>
+    <details class="srcnote srcfold">
+      <summary>Why units aren't normalized</summary>
       <p style="margin:0">Every figure is shown exactly as its source reported it — per day, per night, per trip, or per visit — rather than converted to one common unit. Forcing everything into "per day" would require assuming an average trip length for studies that didn't report one, which would quietly manufacture precision the sources don't have. Where a conversion IS shown (marked <span class="calcflag">calc</span>), the note states the arithmetic and the reason for it, and uses only numbers the source itself printed.</p>
-    </div>
+    </details>
     <div class="srcnote">
       <h3>Confidence tiers — how well-sourced each figure is</h3>
       <div style="display:flex;flex-direction:column;gap:6px">${tierRows}</div>
