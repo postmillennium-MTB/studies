@@ -73,7 +73,7 @@ inline in a render function, or a threshold living inside an `if`, is a bug.
 | To add | Do |
 |---|---|
 | a site | one entry in `SITES` |
-| a non-USD study | one entry in `FOREIGN_SITES` — same field contract plus `cur` and `curSym`. It lists in the Sources tab and is held out of both charts. Read that array's comment before wiring up a normalized-currency view |
+| a non-USD study | one entry in `FOREIGN_SITES` — same field contract plus `cur` and `curSym`. It lists in the Sources tab and is held out of the chart. Read that array's comment before wiring up a normalized-currency view |
 | a tab | write the render function, add one line to `TABS` (it becomes shareable at `/studies/#<id>` for free) |
 | a theme | one entry in `THEMES` + one CSS `[data-theme="…"]` block. Nothing else — not even the pre-paint shim |
 | an exclusion | one entry in `EXCLUSIONS` |
@@ -81,10 +81,13 @@ inline in a render function, or a threshold living inside an `if`, is a bug.
 **Mobile-first.** Base styles are the phone; `@media (min-width: …)` adds the desktop.
 Touch targets ≥ 40px.
 
-**Never color alone.** Every confidence tier is a colored badge **plus** a letter
-**plus** a word. Every bar carries its cohort as a text label. Every value carries
-its unit badge. The Neon theme moves the cohort colors, which is only safe because
-none of the meaning ever rested on the color.
+**Never color alone — and tiers have no color at all.** A confidence tier is a badge
+**fill treatment** (solid / tinted / dashed outline, in the theme's own ink) **plus** a
+letter **plus** a word. It used to be green/amber/red; the green was the Local bar's
+green and the red sat next to the Non-local bar's, so "verified" read as "local".
+Every bar carries its cohort as a text label. Every value carries its unit badge.
+Themes move the cohort colors, which is only safe because none of the meaning ever
+rested on the color.
 
 ## Sourcing discipline — the part that is not negotiable
 
@@ -101,8 +104,8 @@ This tool's entire value is that it does not inflate certainty.
   has been questioned once already.
 - **Units are not normalized, and neither is currency.** Forcing everything to "per
   day" would require inventing an average trip length for studies that never reported
-  one. Non-USD studies go in `FOREIGN_SITES` and are held out of both charts: the
-  charts share one dollar axis, and a figure in another currency drawn on it reads as
+  one. Non-USD studies go in `FOREIGN_SITES` and are held out of the chart: the
+  chart shares one dollar axis, and a figure in another currency drawn on it reads as
   directly comparable when it is not. A normalized view is wanted eventually, and it
   needs an FX table — but "normalized" means nothing until the screen says *which*
   rate and *as of when*. Year-of-study and today's rate answer different questions.
@@ -177,6 +180,33 @@ tidy up reintroduces the bug.
   without knowing the `THEMES` registry exists. The storage key string is duplicated
   in the shim on purpose; both sides say so.
 
+- **The bar value column is a fixed width (`--val-w`).** Each bar is a percentage of
+  its own track, and the track is whatever the row has left after the value beside it.
+  With a value column that sized itself to its text, tracks measured 166–211px at 375px
+  wide, so the same dollar amount drew up to ~27% longer or shorter depending on the
+  row. The Log axis row reads the same `--lab-w` / `--val-w` so its ticks land over the
+  tracks. Widen the variable if a value overflows; never let the column size itself.
+- **The Range view is SVG measured at render time, and the 22 is the card.** `renderRangeView` takes the panel's width minus 22 (the `.rangewrap` card's 10px padding and 1px border, both sides). Change that padding and change the 22. It redraws only when the width really changes (a rotation), not when a phone's address bar resizes its height; the tap targets are invisible 13px circles drawn LAST in each lane so no label or dot paints over them.
+- **Every dot in the Range view is labeled with its unit.** The old Range tab's bare dots broke the rule that every value carries its unit. `fitLabel` shortens the NAME to fit and never drops the unit.
+- **`#range` is the Range view, `#log` is the Log view.** `#range` was briefly pointed at Log during Pass 2, which was wrong: existing links to it meant the two-lane plot.
+- **The Log axis draws dots, never bars.** A bar's length is its value from a baseline,
+  and a log axis has no zero, so a log-scaled bar's length means nothing. Dots claim
+  only a position, which is all a log axis can honestly give.
+- **Confidence badges use `--tb-ink` / `--tb-ground`,** redefined inside `.tooltip`,
+  because the tooltip is dark on the Ledger and a badge drawn from the page's ink
+  would be invisible there.
+- **The theme-name labels appear at 760px, not 640px.** Four labelled pills plus the
+  full "Post Millennium Renaissance" link overflow a 640px screen by 2px and pan the
+  page. Below 760px the switch is swatches only, and `aria-label` carries the name.
+- **`.filterbody[hidden]{display:none}` is load-bearing.** `.filterbody` is `display:flex`,
+  which outranks the `hidden` attribute; without the explicit rule the folded filter
+  controls stay visible.
+- **`--head-font` must never be set to `inherit`.** On a custom property that keyword
+  means "take the parent's custom property", not "use the body font". Write the stack out.
+- **The tabs' ARIA is one piece.** `role=tab` + `aria-selected` + `aria-controls` +
+  `role=tabpanel` + roving `tabindex` + the arrow-key handler work together. Removing
+  any one leaves a worse widget than having none.
+
 ## Iframe consequences
 
 - **The PMR home link needs `target="_top"`.** Without it the whole site loads inside
@@ -241,20 +271,16 @@ the sessions that built this could not open external PDFs.
 
 **Build**
 
-- **The Range tab is the weak one.** Its vertical axis carries no information — dots
-  stack in `SITES` order. It runs ~977px tall on a phone with filters off, the whole
-  $1–$40 stretch of the log axis is empty, and dots collide (Kingdom Trails' $176 and
-  $190 land 3.3px apart). It should collapse to one line per lane with vertical
-  dodging only on collision.
 - **No headline stat.** "11 of 15 MTB studies never surveyed locals" is the strongest
   finding in the dataset and is currently only visible by scrolling past "not
   reported" eleven times.
-- **Accessibility.** Tabs use `role="tab"` with `aria-pressed` (invalid — tabs take
-  `aria-selected`), panels have no `role="tabpanel"`, and none of the chart bars are
-  keyboard-reachable. The source table carries every note, so no content is lost, but
-  the charts are mouse-only. Fixing this properly means `aria-selected` + roles +
-  arrow-key handling together, not one piece of it.
+- **Accessibility.** The tabs are now a proper ARIA tab set (`aria-selected`,
+  `role="tabpanel"`, roving `tabindex`, arrow/Home/End keys). What is still missing is
+  keyboard access to the chart marks themselves — bars and dots open their tooltip on
+  hover or tap only. The Sources tab carries every note, so no content is lost, but the
+  chart is mouse- and touch-only.
 - **Cross-unit comparison tension.** On By Site, $138.49/day and $146.01/trip render
-  as near-identical bars on a shared linear axis. The filter-bar note warns against
+  as near-identical bars on a shared linear axis (and as near-identical dots on the log
+  one). Grouping the rows by unit would remove the invitation; not done. The filter-bar note warns against
   the comparison the geometry invites. Considered and accepted; an open design
   question, not a bug.
