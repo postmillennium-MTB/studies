@@ -97,7 +97,10 @@ This tool's entire value is that it does not inflate certainty.
 - **Never invent a figure, and never invent a URL.** A row with no verified link
   renders as plain text. Several rows are unlinked on purpose.
 - **Every figure traces to a page number in a named study**, or is marked `calc`
-  with the arithmetic written out in its note.
+  with the arithmetic written out in its note **and the reason for it** (what the source
+  printed instead, and why the conversion puts the row on the same footing as its
+  neighbours). The tool's own text never says who did the arithmetic; it says what was
+  done and why.
 - **A gap beats a guess.** If a source printed no rate and none can be derived from
   its own printed numbers, the field stays empty.
 - **`mtb` grades the study, not the place.** Bentonville is a famous mountain bike town and its row is `mtb:"n"`, because the figure was read from a study of all bicycling in Northwest Arkansas. If an MTB-specific figure for the same place is ever found in a source, it is a new row (`mtb:"y"`), not a change to this one.
