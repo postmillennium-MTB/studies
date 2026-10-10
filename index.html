@@ -30,12 +30,15 @@
                                      out, and the origins allowed to talk to it
     · THEMES registry ............. color themes — add one line to add one
     · TABS registry ............... the 3 tabs — add one line to add one
+    · UI_TEXT + LEGEND_KEY ........ interface strings and the legend entries that
+                                     explain a mark (hatch, calc) rather than a
+                                     cohort or tier
     · tuning constants ............ bar heights, dot radii, axis padding (named)
     ==== everything past "END OF DATA" is logic ====
     · scale helpers ............... $ value -> pixel position, per chart
     · renderBySite() .............. "By Site" tab: paired local/non-local bars
     · renderRange() ............... "Range" tab: log-scale strip plot
-    · renderSources() ............. "Sources & Methodology" tab
+    · renderSources() ............. "Sources" tab (methodology, tiers, citations)
     · theme switch ................ applyTheme / buildThemeSwitch
     · share ....................... shareUrl / wireShare — native sheet, then
                                      clipboard, then the old execCommand path
@@ -50,6 +53,8 @@
                        block. Nothing else — not even the pre-paint shim.
   TO CHANGE THE DEFAULT THEME: see the specificity note in the CSS THEME section
                        before touching this — order matters there.
+  A THEME'S TITLE FACE: --head-font in its CSS block. The Ledger sets a serif;
+                       a theme that sets nothing inherits it.
 ==================================================================================
 -->
 <html lang="en">
@@ -130,7 +135,10 @@
      each color pairs with. Never color alone: every tier also renders a
      letter badge (V / M / L). */
   --tier-v:#3d6b52;
-  --tier-m:#a8791f;
+  --tier-m:#85600f;      /* was #a8791f: white-on-amber was 3.87:1 and the amber
+                            "calc" text 3.73:1, both under the 4.5:1 AA floor.
+                            This is 5.7:1 on white (the badge letter), 4.9:1 on
+                            --paper and 5.5:1 on --card. */
   --tier-l:#a33d2e;
   --warn-bg:#fbeee7;
   /* Surfaces that used to be hard-coded rgba-black literals down in the
@@ -154,7 +162,16 @@
                                 illegal as a list item and kills the whole rule */
   --head-glow:none;          /* text-shadow; used alone, so "none" is fine */
   --head-transform:none;
-  --head-spacing:normal;
+  --head-spacing:-.01em;
+  /* The title face. A Ledger is printed matter, so its title is a serif; every
+     name in the stack is already installed on the device it names, so there is
+     nothing to load (no web font — the zero-dependency rule). It renders as
+     Palatino/Iowan on Apple devices and Georgia on Windows. Neon overrides it
+     with a sans stack. NEVER write "inherit" as this value: on a custom
+     property that keyword means "take the parent's custom property", not
+     "use the body font", and the title would silently fall back to the UA
+     default. A theme that sets nothing gets this serif. */
+  --head-font:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
 }
 
 /* ==== THEME PALETTE — "Neon" (second theme; 1990s arcade blacklight). ========
@@ -211,7 +228,9 @@
   --card-glow:0 0 0 1px #ffffff0a, 0 0 18px #c77dff1f;
   --head-glow:0 0 10px #ff2d9599, 0 0 22px #c77dff55;
   --head-transform:uppercase;
-  --head-spacing:.045em;
+  --head-spacing:.02em;      /* was .045em: at that tracking the uppercase title was
+                                wider than a phone and orphaned "LEDGER" */
+  --head-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -237,7 +256,7 @@ a{color:var(--accent)}
   display:inline-flex;align-items:center;gap:5px;flex:none;
   min-height:40px;padding:2px 2px;border-radius:6px;
   color:var(--ink-soft);text-decoration:none;
-  font-size:.78rem;font-weight:700;letter-spacing:.02em;
+  font-size:.8rem;font-weight:700;letter-spacing:.02em;
 }
 .pmr-link:hover{color:var(--accent)}
 .pmr-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -254,7 +273,7 @@ a{color:var(--accent)}
   background:var(--card);border:1px solid var(--line);border-radius:999px;padding:2px;
 }
 .themebtn{
-  appearance:none;cursor:pointer;font:inherit;font-size:.72rem;font-weight:700;
+  appearance:none;cursor:pointer;font:inherit;font-size:.78rem;font-weight:700;
   display:inline-flex;align-items:center;gap:5px;
   min-height:36px;padding:4px 9px;border:1px solid transparent;border-radius:999px;
   background:none;color:var(--ink-soft);white-space:nowrap;
@@ -290,7 +309,7 @@ a{color:var(--accent)}
 .share-status{
   position:absolute;top:calc(100% + 6px);right:0;
   background:var(--accent);color:var(--badge-ink);
-  font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
   padding:4px 8px;border-radius:4px;white-space:nowrap;
   opacity:0;pointer-events:none;transition:opacity .2s;
 }
@@ -302,22 +321,36 @@ a{color:var(--accent)}
 /* ── Masthead ─────────────────────────────────────────────────────────────── */
 .masthead{border-bottom:3px solid var(--mast-rule);padding:10px 0 12px;margin-bottom:14px}
 .masthead h1{
-  font-size:1.32rem;margin:0 0 4px;line-height:1.2;
-  /* Set by the active theme: the Ledger leaves all three inert, the Neon
-     palette uppercases, tracks out and lights the title. */
+  font-size:1.7rem;margin:0 0 6px;line-height:1.15;font-weight:700;
+  /* Set by the active theme: the Ledger sets a serif face and leaves the
+     transform and glow inert; the Neon palette swaps in a sans, uppercases,
+     tracks out and lights the title. */
+  font-family:var(--head-font);
   text-transform:var(--head-transform);letter-spacing:var(--head-spacing);text-shadow:var(--head-glow);
+  /* Balances the wrap so a two-line title breaks into two even lines instead of
+     leaving one word alone on the second (Neon used to orphan "LEDGER"). Where a
+     browser lacks it, the title simply wraps the old way. */
+  text-wrap:balance;
 }
-.masthead .tagline{color:var(--ink-soft);font-size:.88rem;margin:0}
+.masthead .tagline{color:var(--ink-soft);font-size:.92rem;line-height:1.45;margin:0}
 .masthead .accent-rule{height:3px;background:var(--rule-bg);width:56px;margin-top:8px;border-radius:2px}
 
 /* ── Tabs (built from the TABS registry in the script below) ────────────────── */
-.tabbar{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 12px;border-bottom:1px solid var(--line);padding-bottom:0}
+/* Mobile-first: the tabs are equal-width segments that share the bar, which is
+   what keeps three of them on ONE row at 320px. They used to size to their
+   labels and the third wrapped onto a second row. The registry labels are kept
+   short for the same reason — a long label makes a segment too narrow. The
+   desktop block below hands them back their natural width. The active tab is
+   marked by a 3px accent underline sitting on the bar's own rule (the -1px
+   margin), plus bolder ink — never by color alone. */
+.tabbar{display:flex;gap:4px;margin:14px 0 12px;border-bottom:1px solid var(--line);padding-bottom:0}
 .tabbtn{
-  appearance:none;border:1px solid transparent;background:none;cursor:pointer;
-  font:inherit;font-weight:600;font-size:.86rem;color:var(--ink-soft);
-  padding:9px 12px;min-height:40px;border-radius:8px 8px 0 0;
+  appearance:none;border:1px solid transparent;border-bottom:3px solid transparent;
+  background:none;cursor:pointer;flex:1 1 0;text-align:center;
+  font:inherit;font-weight:600;font-size:.92rem;color:var(--ink-soft);
+  padding:8px 6px;min-height:44px;margin-bottom:-1px;border-radius:8px 8px 0 0;
 }
-.tabbtn[aria-pressed="true"]{color:var(--ink);border-color:var(--line);border-bottom-color:var(--card);background:var(--card)}
+.tabbtn[aria-pressed="true"]{color:var(--ink);font-weight:700;border-color:var(--line);border-bottom-color:var(--accent);background:var(--card)}
 .tabbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .panel{display:none}
 .panel[data-active="true"]{display:block}
@@ -342,18 +375,26 @@ a{color:var(--accent)}
 .tierbtn[aria-pressed="false"]{opacity:.45;background:transparent}
 .tierbtn[aria-pressed="false"] .tierbtn-label{text-decoration:line-through}
 .tierbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.filterbar .note{color:var(--ink-soft);font-size:.78rem;flex-basis:100%}
+.filterbar .note{color:var(--ink-soft);font-size:.8rem;line-height:1.45;flex-basis:100%}
+/* How many of the registered figures the filters are letting through. Its own
+   line, above the note, so a viewer who has switched something off can see that
+   rows are missing without having to count them. */
+.filterbar .rowcount{flex-basis:100%;font-weight:700;font-size:.84rem}
 
 /* ── Legend ───────────────────────────────────────────────────────────────── */
-.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.78rem;color:var(--ink-soft);margin:2px 0 16px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:.8rem;color:var(--ink-soft);margin:2px 0 16px}
 .legend .item{display:flex;align-items:center;gap:6px}
 .legend .legend-label{font-weight:700;color:var(--ink);margin-left:2px}
 .tierrow{display:flex;align-items:flex-start;gap:8px;line-height:1.45}
-.tierrow .tierbadge{margin-top:2px}
+.tierrow .tierbadge{margin-top:1px}
 .swatch{width:13px;height:13px;border-radius:3px;display:inline-block}
+/* The hatched swatch is the legend's key to the reported-range extension. It is
+   built from the same two stripe colors as .barfill.range, so the key and the
+   thing it explains cannot drift apart. */
+.swatch.hatch{background:repeating-linear-gradient(135deg,var(--nonlocal),var(--nonlocal) 3px,var(--nonlocal-soft) 3px,var(--nonlocal-soft) 6px)}
 .tierbadge{
   display:inline-flex;align-items:center;justify-content:center;
-  width:16px;height:16px;border-radius:4px;font-size:.66rem;font-weight:800;
+  width:20px;height:20px;border-radius:4px;font-size:.75rem;font-weight:800;
   color:var(--badge-ink);flex:none;
 }
 
@@ -361,11 +402,11 @@ a{color:var(--accent)}
 .siterow{border-bottom:1px solid var(--line);padding:10px 0}
 .siterow:last-child{border-bottom:none}
 .siterow-head{display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:6px}
-.siterow-name{font-weight:700;font-size:.88rem}
-.siterow-meta{font-size:.74rem;color:var(--ink-soft);white-space:nowrap}
-.bargroup{display:flex;flex-direction:column;gap:5px}
-.barline{display:flex;align-items:center;gap:8px}
-.barlabel{width:64px;flex:none;font-size:.72rem;font-weight:700;text-align:right;color:var(--ink-soft)}
+.siterow-name{font-weight:700;font-size:.95rem}
+.siterow-meta{font-size:.78rem;color:var(--ink-soft);white-space:nowrap}
+.bargroup{display:flex;flex-direction:column;gap:6px}
+.barline{display:flex;align-items:center;gap:8px;min-height:24px}
+.barlabel{width:68px;flex:none;font-size:.78rem;font-weight:700;text-align:right;color:var(--ink-soft)}
 .bartrack{flex:1;position:relative;height:22px;background:var(--track-bg);border-radius:4px;overflow:visible}
 .barfill{position:absolute;left:0;top:0;height:100%;border-radius:4px;min-width:3px;cursor:pointer}
 .barfill.local{background:var(--local)}
@@ -376,19 +417,38 @@ a{color:var(--accent)}
    the high bound — so square off the inner corners where they meet. */
 .barfill.rangelow{border-radius:4px 0 0 4px}
 .barfill.rangeext{border-radius:0 4px 4px 0;min-width:0}
-.barval{font-size:.72rem;font-weight:700;color:var(--ink);white-space:nowrap;flex:none}
+/* THE VALUE COLUMN IS A FIXED WIDTH, and that is load-bearing. Every bar is drawn
+   as a percentage of its OWN track (BAR_MAX_DOLLARS), and the track is whatever
+   width the row has left over after the value beside it. With a value column
+   that sized itself to its text, "$329–$617 /VISIT" left a shorter track than
+   "$48 /TRIP" — measured at 375px, tracks ran 166px to 211px — so the same
+   dollar amount drew up to ~27% longer or shorter depending on the row, on a
+   chart whose whole claim is one shared axis. The fixed width makes every track
+   the same length. If a value ever overflows it, widen --val-w; do not go back
+   to letting the column size itself.
+   On a phone the unit badge (and the calc flag) stack UNDER the number so the
+   column stays narrow and the bar keeps its room; the desktop block puts them
+   back on one line. tabular-nums gives every digit the same width so decimals
+   line up down the column. */
+.barval{
+  --val-w:5.9rem;
+  flex:none;width:var(--val-w);display:flex;flex-direction:column;align-items:flex-end;
+  font-size:.9rem;font-weight:700;line-height:1.15;color:var(--ink);white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.valrow{display:inline-flex;align-items:center;gap:5px;margin-top:2px}
 .unitbadge{
-  font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em;
+  font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em;
   color:var(--ink-soft);background:var(--chip-bg);border-radius:3px;padding:1px 4px;flex:none;
 }
-.calcflag{font-size:.68rem;color:var(--tier-m);font-style:italic}
-.nodata{font-size:.72rem;color:var(--ink-soft);font-style:italic;padding:2px 0}
+.calcflag{font-size:.75rem;font-weight:600;color:var(--tier-m);font-style:italic}
+.nodata{font-size:.78rem;color:var(--ink-soft);font-style:italic;padding:2px 0}
 
 /* ── Range tab (strip plot) ───────────────────────────────────────────────── */
 .rangewrap{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 10px 8px;box-shadow:var(--card-glow)}
 .rangesvg{display:block;width:100%}
 .rangedot{cursor:pointer}
-.rangecap{font-size:.74rem;color:var(--ink-soft);margin-top:8px}
+.rangecap{font-size:.8rem;line-height:1.45;color:var(--ink-soft);margin-top:8px}
 
 /* ── Tooltip ──────────────────────────────────────────────────────────────── */
 .tooltip{
@@ -429,13 +489,13 @@ a{color:var(--accent)}
 .srctable td{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;border:none;padding:2px 0;text-align:left}
 .srctable td::before{
   content:attr(data-label);flex:0 0 96px;
-  color:var(--ink-soft);font-size:.66rem;font-weight:700;
+  color:var(--ink-soft);font-size:.75rem;font-weight:700;
   text-transform:uppercase;letter-spacing:.03em;
 }
 /* The site name is the card's heading, not another labelled field. */
 .srctable td.srccell-site{display:block;font-weight:700;font-size:.86rem;margin-bottom:5px}
 .srctable td.srccell-site::before{content:none}
-.srctable th{text-align:left;padding:7px 6px;color:var(--ink-soft);font-size:.7rem;text-transform:uppercase;letter-spacing:.03em;vertical-align:top}
+.srctable th{text-align:left;padding:7px 6px;color:var(--ink-soft);font-size:.75rem;text-transform:uppercase;letter-spacing:.03em;vertical-align:top}
 /* The two spending columns. The swatch in the header is the same one the legend
    and the bars use, so the table reads as the same data rather than a second,
    unrelated list — but the column HEADING carries the words, never the color. */
@@ -449,7 +509,7 @@ a{color:var(--accent)}
 .srclink-icon{display:inline-flex;vertical-align:-2px;margin-left:4px}
 .origlink{white-space:nowrap;margin-left:2px}
 .origlink .srclink{font-weight:600;font-size:.92em;opacity:.88}
-.archflag{display:inline-block;margin-left:5px;font-size:.62rem;font-weight:700;text-transform:uppercase;
+.archflag{display:inline-block;margin-left:5px;font-size:.75rem;font-weight:700;text-transform:uppercase;
   letter-spacing:.02em;color:var(--ink-soft);background:var(--chip-bg);border-radius:3px;padding:1px 4px;white-space:nowrap}
 /* Visually hidden but read aloud — the icon is decorative, so the "new tab"
    warning has to reach a screen reader some other way. */
@@ -472,9 +532,18 @@ footer a:hover{text-decoration:underline}
   /* Keeps "$138.49 /day" on one line in a column. On the phone's stacked layout
      it instead sets a min-content floor that pans the page — see the note above. */
   .srcval{white-space:nowrap}
-  .masthead h1{font-size:1.6rem}
-  .barlabel{width:78px;font-size:.76rem}
-  .siterow-name{font-size:.94rem}
+  .masthead h1{font-size:2.2rem}
+  .masthead .tagline{font-size:1rem}
+  .barlabel{width:78px;font-size:.82rem}
+  .siterow-name{font-size:1rem}
+  /* Room for the number, the unit and the calc flag on ONE line again, in a
+     column that is still a fixed width — see the note on .barval. */
+  .barval{--val-w:9.5rem;flex-direction:row;align-items:baseline;justify-content:flex-end;gap:6px}
+  .valrow{margin-top:0}
+  /* Tabs hand back their natural width; the phone's equal segments would
+     stretch three short labels across 980px. */
+  .tabbar{gap:6px}
+  .tabbtn{flex:0 0 auto;padding:8px 18px;font-size:.95rem}
 }
 </style>
 </head>
@@ -509,7 +578,7 @@ footer a:hover{text-decoration:underline}
 
   <div class="masthead">
     <h1>Trail Visitor Spending Ledger</h1>
-    <p class="tagline">What non-local and local mountain bikers actually spend — 21 site figures compiled from 17 published studies, every unit, every gap, every disagreement between sources shown, not smoothed over.</p>
+    <p class="tagline">What local and non-local mountain bikers spend, from 17 published studies — every unit and caveat shown.</p>
     <div class="accent-rule"></div>
   </div>
 
@@ -521,7 +590,9 @@ footer a:hover{text-decoration:underline}
     <label id="rangesControl"><input type="checkbox" id="showRanges" checked> Show reported ranges</label>
     <!-- Confidence toggles are BUILT FROM CONF_META by buildTierFilters(). -->
     <span class="tierfilter" id="tierFilter"></span>
-    <span class="note">Bars and dots plot the dollar figure exactly as each study reported it. Studies measure different things — a day, a night, a trip, a whole visit — so a unit badge sits on every value. Don't read two different units as directly comparable; that inconsistency is itself part of the story (see Sources tab).</span>
+    <!-- Filled by updateRowCount() from UI_TEXT.rowCount. -->
+    <span class="rowcount" id="rowCount" role="status"></span>
+    <span class="note" id="filterNote">Bars and dots plot the dollar figure exactly as each study reported it. Studies measure different things — a day, a night, a trip, a whole visit — so a unit badge sits on every value. Don't read two different units as directly comparable; that inconsistency is itself part of the story (see Sources tab).</span>
   </div>
 
   <div class="legend" id="legendTop"></div>
@@ -750,13 +821,37 @@ const THEME_STORAGE_KEY="pmrStudiesTheme";
              the file, so a direct reference here would hit a declaration-order
              trap)
      ranges  set false if the tab draws no reported ranges, which hides the
-             "Show reported ranges" control there. The MTB-only and confidence
-             filters apply on EVERY tab, so nothing else is per-tab.
+             "Show reported ranges" control there.
+     chart   set false if the tab draws no bars or dots, which hides the filter
+             bar's "Bars and dots plot the dollar figure…" note there — it would
+             describe a chart that isn't on the screen.
+             The MTB-only and confidence filters apply on EVERY tab, so nothing
+             else is per-tab.
+   Keep labels SHORT. On a phone the tabs are equal-width segments sharing one
+   row at 320px; a long label makes its segment too narrow and wraps.
    ============================================================================ */
 const TABS=[
-  {id:"bysite",  label:"By Site",              render:"renderBySite",  ranges:true},
-  {id:"range",   label:"Range (all studies)",  render:"renderRange",   ranges:true},
-  {id:"sources", label:"Sources & Methodology",render:"renderSources", ranges:false},
+  {id:"bysite",  label:"By Site", render:"renderBySite",  ranges:true,  chart:true},
+  {id:"range",   label:"Range",   render:"renderRange",   ranges:true,  chart:true},
+  {id:"sources", label:"Sources", render:"renderSources", ranges:false, chart:false},
+];
+
+/* ==== UI_TEXT — interface strings that are not data rows. ====================
+   rowCount   the filter bar's "how much am I looking at" line. {n} is the
+              number of figures the filters let through, {total} the number
+              registered in SITES. */
+const UI_TEXT={
+  rowCount:"Showing {n} of {total} figures",
+};
+
+/* ==== LEGEND_KEY — the legend entries that explain a mark rather than a
+   cohort or a tier. The cohort and tier entries are built from the registries
+   in buildLegendTop(); these two had no home and went unexplained.
+     kind    "hatch" = the striped reported-range swatch, "calc" = the italic flag
+     label   the words that sit beside it — the mark never stands alone ======== */
+const LEGEND_KEY=[
+  {kind:"hatch", label:"Reported range, low to high"},
+  {kind:"calc",  label:"Claude-assisted calculation — see note"},
 ];
 
 /* ================== END OF DATA — everything below is logic ================== */
@@ -981,8 +1076,7 @@ function barLine(label,s,key,cls){
   return `<div class="barline">
     <span class="barlabel">${esc(label)}</span>
     <span class="bartrack">${fills}</span>
-    <span class="barval">${displayVal}<span class="unitbadge">${UNIT_META[s.unit]}</span></span>
-    ${s.calc?'<span class="calcflag" title="Claude-assisted calculation — see tooltip">calc</span>':''}
+    <span class="barval">${displayVal}<span class="valrow"><span class="unitbadge">${UNIT_META[s.unit]}</span>${s.calc?'<span class="calcflag" title="Claude-assisted calculation — see tooltip">calc</span>':''}</span></span>
   </div>`;
 }
 function wireBarEvents(container){
@@ -1026,7 +1120,7 @@ function renderRange(container){
   ticks.forEach(t=>{
     const x=xScale(t);
     svg+=`<line x1="${x}" y1="${PADT}" x2="${x}" y2="${lanesH-24}" stroke="var(--line)" stroke-width="1"/>`;
-    svg+=`<text x="${x}" y="${lanesH-8}" font-size="11" fill="var(--ink-soft)" text-anchor="middle">$${t}</text>`;
+    svg+=`<text x="${x}" y="${lanesH-8}" font-size="12" fill="var(--ink-soft)" text-anchor="middle">$${t}</text>`;
   });
   // lane labels
   svg+=`<text x="${PADL}" y="${PADT-4}" font-size="12" font-weight="700" fill="var(--nonlocal)">NON-LOCAL</text>`;
@@ -1251,12 +1345,26 @@ function buildLegendTop(){
   Object.keys(CONF_META).forEach(k=>{
     html+=`<span class="item">${tierBadge(k)} ${esc(CONF_META[k].label)}</span>`;
   });
+  // The marks that are neither a cohort nor a tier — see LEGEND_KEY.
+  LEGEND_KEY.forEach(m=>{
+    const mark = m.kind==="hatch" ? `<span class="swatch hatch"></span>`
+               : m.kind==="calc"  ? `<span class="calcflag">calc</span>`
+               : "";
+    html+=`<span class="item">${mark}${esc(m.label)}</span>`;
+  });
   document.getElementById("legendTop").innerHTML=html;
+}
+// "Showing 15 of 21 figures". Same count the charts and the source table draw
+// from, so the line cannot disagree with the screen.
+function updateRowCount(){
+  document.getElementById("rowCount").textContent =
+    UI_TEXT.rowCount.replace("{n}",visibleSites().length).replace("{total}",SITES.length);
 }
 function renderActiveTab(){
   const tab=TABS.find(t=>t.id===activeTab);
   const panel=document.getElementById("p-"+tab.id);
   window[tab.render](panel);
+  updateRowCount();
 }
 function buildTabsAndPanels(){
   const bar=document.getElementById("tabbar");
@@ -1278,15 +1386,17 @@ function setActiveTab(id){
     document.getElementById("tabbtn-"+o.id).setAttribute("aria-pressed", o.id===t.id);
     document.getElementById("p-"+o.id).setAttribute("data-active", o.id===t.id);
   });
-  setRangesControl(t);
+  setTabControls(t);
   syncShareHref();
   renderActiveTab();
 }
-// Only the ranges control is per-tab now. Driven from the registry in BOTH the
-// click handler and init() — it used to be set only on click, so the first tab
-// was correct purely by luck of TABS order.
-function setRangesControl(tab){
+// The filter bar's per-tab parts: the ranges control and the chart note. Driven
+// from the registry in BOTH the click handler and init() — the ranges control
+// used to be set only on click, so the first tab was correct purely by luck of
+// TABS order. The note follows the same rule for the same reason.
+function setTabControls(tab){
   document.getElementById("rangesControl").style.display = tab.ranges ? "flex" : "none";
+  document.getElementById("filterNote").style.display = tab.chart ? "" : "none";
 }
 function wireFilters(){
   document.getElementById("mtbOnly").addEventListener("change",e=>{
@@ -1423,7 +1533,7 @@ function init(){
   buildLegendTop();
   buildTierFilters();
   buildTabsAndPanels();
-  setRangesControl(TABS.find(t=>t.id===activeTab));
+  setTabControls(TABS.find(t=>t.id===activeTab));
   wireFilters();
   wireShare();
   renderActiveTab();
