@@ -266,9 +266,14 @@ the sessions that built this could not open external PDFs.
 - **Eastern Trail.** The row says $242.35/day; the Eastern Trail Alliance's own page
   says $118/day across 251,978 users. Roughly 2×. Possibly all-users vs.
   non-local-only, possibly a TPL transcription error. The highest-value thing to check.
-- **CAMBA `PROVENANCE UNRESOLVED`.** $245.40/day cannot be traced to the cited TPL
-  page ($1,107/visit narrative, $1,017.18/visit appendix). Tiered `L` and flagged.
-  The original UW–River Falls report is linked, so this is resolvable by reading it.
+- **CAMBA is resolved, with a loose end.** The old $245.40/day (read through the TPL
+  Green Paper) could not be traced; the row now comes from the original Hadley &
+  Trechter 2020 report, whose Executive Summary gives $200/day *expected* spending by
+  non-local visitors (Table 1-3), tiered `V`. Two things to finish: the row cites the
+  table, not a **page number**, and the summary calls $200 "an average" while saying it
+  reports medians elsewhere, so check whether Table 1-3's $200 is the mean or the median.
+  The Green Paper's other CAMBA figures ($1,107 and $1,017.18 per visit) were not in
+  the Executive Summary and are unexplained; do not re-add the $245.40.
 - **Manti-La Sal author list.** Cited as "Maples, Rehm & Bradley 2022"; Outdoor
   Alliance names only Maples and Bradley. Unverified.
 - **Nelson–Tasman (BERL 2018) is the one row read against its source document.**
@@ -285,7 +290,7 @@ the sessions that built this could not open external PDFs.
 
 **Build**
 
-- **Stories hide with their rows.** The Sources table obeys the filters, so with the defaults (MTB studies only, Low off) the stories for every non-MTB row and every Low row — Bentonville, CAMBA, Keene, James River — are not reachable until the filters are widened. Considered and left as is: it matches every other table on the tab, and the "Showing N of 21" line says rows are hidden.
+- **Stories hide with their rows.** The Sources table obeys the filters, so with the defaults (MTB studies only, Low off) the stories for every non-MTB row and every Low row — Bentonville, Keene, James River — are not reachable until the filters are widened. Considered and left as is: it matches every other table on the tab, and the "Showing N of 21" line says rows are hidden.
 - **No headline stat.** "11 of 15 MTB studies never surveyed locals" is the strongest
   finding in the dataset and is currently only visible by scrolling past "not
   reported" eleven times.
