@@ -48,6 +48,16 @@ depends on having read the chart first. On a phone each study stacks into a
 labelled card instead of a six-column table, which reads better and is also the
 only layout that doesn't pan the page sideways (see `CLAUDE.md`).
 
+### Printing and PDF
+
+File → Print (or *Save as PDF*) from the open tab. The print layout is its own stylesheet and changes nothing on screen.
+
+- **What prints:** the tab you are on. The filter line (*Showing 14 of 21 · MTB only · tiers V, M*), the legend and the units caveat all print, so a page says what it is filtered to. The buttons, tabs, theme switch and Share do not.
+- **Sources tab:** every note is opened for the print and closed again afterwards. Each source's web address is printed under its citation, since a link does nothing on paper. The table header repeats on each page, and each note runs full-width under its row.
+- **Colors:** all four themes print on white paper and keep their own title face and hue family, with colors re-tuned for ink. The two cohorts also differ in *lightness* (2.1:1 or more in every theme), so Local and Non-local stay distinct on a black-and-white printer. Every print color is at least 4.5:1 on white.
+- **Range view:** redrawn at page width while printing so its labels print at about 8.5pt rather than 7pt.
+- **In the print dialog:** turn **Headers and footers** off (the page prints its own page numbers in Chrome and Edge 131+) and leave **Background graphics** on or off as you like — the tool forces its own bars and badges to print either way. Portrait works for every view; landscape also works, it just leaves more white.
+
 ### Deep links
 
 Every tab has its own address, and the Share button builds it for you:

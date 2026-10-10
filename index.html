@@ -21,6 +21,9 @@
     · CHART ELEMENTS .............. bars, dots, unit badges, tooltip, legend
     · CONTROLS .................... MTB-only toggle, reported-ranges toggle,
                                      theme switch, share button
+    · PRINT / SAVE AS PDF ......... last block in <style>, all inside @media print:
+                                     white-paper palettes per theme, hidden
+                                     controls, page breaks, source-table grid
 
   <script>
     ==== ALL DATA LIVES IN ONE CONTIGUOUS BLOCK AT THE TOP ====
@@ -55,6 +58,8 @@
     · share ....................... shareUrl / wireShare — native sheet, then
                                      clipboard, then the old execCommand path
     · deep links .................. hash + postMessage bridge into a tab
+    · printing .................... printPrepare / printRestore — open the folded
+                                     notes and redraw Range at page width for a print
     · tooltip wiring, filters, init()
 
   TO ADD A SITE:      add ONE line to the SITES array. See the legend comment
@@ -516,13 +521,23 @@ a{color:var(--accent)}
 .filterbody[hidden]{display:none}   /* display:flex above would otherwise beat [hidden] */
 .filterbar label{display:flex;align-items:center;gap:6px;cursor:pointer;min-height:40px}
 .filterbar input[type="checkbox"]{width:17px;height:17px}
-.tierfilter{display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex-basis:100%}
+/* 10px between wrapped rows, not 6: each chip draws 30px but owns a 40px tap area
+   (see .tierbtn::after), and a 30px chip + 10px gap is exactly 40px of pitch, so
+   the tap areas of two rows tile instead of overlapping. */
+.tierfilter{display:flex;flex-wrap:wrap;align-items:center;gap:10px 6px;flex-basis:100%}
 .tierfilter-label{font-weight:700;color:var(--ink);margin-right:2px}
+/* SMALL TO LOOK AT, FULL SIZE TO TOUCH. The chip is 30px tall; the ::after below
+   stretches its hit area 5px above and below to the 40px touch-target floor
+   without drawing anything. It stretches vertically only, so neighbours side by
+   side never steal each other's taps. Same device on .axisbtn. */
 .tierbtn{
-  appearance:none;cursor:pointer;font:inherit;font-size:.78rem;font-weight:600;
-  display:inline-flex;align-items:center;gap:5px;min-height:40px;padding:4px 10px;
+  position:relative;
+  appearance:none;cursor:pointer;font:inherit;font-size:.76rem;font-weight:600;
+  display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:2px 10px 2px 6px;
   border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);
 }
+.tierbtn::after{content:"";position:absolute;left:0;right:0;top:-5px;bottom:-5px}
+.tierbtn .tierbadge{width:18px;height:18px;font-size:.7rem}
 /* Off state never relies on color alone: aria-pressed carries it for assistive
    tech, and the struck-through label plus dimming carry it in greyscale. */
 .tierbtn[aria-pressed="false"]{opacity:.45;background:transparent}
@@ -626,10 +641,12 @@ a{color:var(--accent)}
 .axiscontrol{display:flex;align-items:center;gap:6px;margin:0 0 6px}
 .axiscontrol-label{font-size:.8rem;font-weight:700;color:var(--ink-soft);margin-right:2px}
 .axisbtn{
-  appearance:none;cursor:pointer;font:inherit;font-size:.84rem;font-weight:600;
-  min-height:40px;padding:4px 16px;border:1px solid var(--line);border-radius:999px;
+  position:relative;
+  appearance:none;cursor:pointer;font:inherit;font-size:.8rem;font-weight:600;
+  min-height:30px;padding:2px 14px;border:1px solid var(--line);border-radius:999px;
   background:var(--card);color:var(--ink-soft);
 }
+.axisbtn::after{content:"";position:absolute;left:0;right:0;top:-5px;bottom:-5px}   /* 40px tap area, see .tierbtn */
 /* The selected scale is filled and bold, not merely tinted — and aria-pressed
    carries it for assistive tech. */
 .axisbtn[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:700}
@@ -753,7 +770,7 @@ a{color:var(--accent)}
 .srctable{width:100%;border-collapse:collapse;font-size:.78rem}
 .srctable tr{display:block;border-bottom:1px solid var(--line);padding:9px 0}
 .srctable tr:last-child{border-bottom:none}
-.srctable tr:first-child{display:none}   /* header row — its labels move onto the cells */
+.srctable thead{display:none}   /* header row — its labels move onto the cells */
 /* flex-wrap matters: without it the 96px label and the cell's min-content sit
    side by side and set a floor the card can't go under, which pans the page on
    a 320px screen. Wrapping lets a long value drop below its own label instead. */
@@ -811,7 +828,8 @@ footer a:hover{text-decoration-thickness:2px}
   .pmr-short{display:none}
   /* Back to a real table once there is room for one. See the bug note above
      for why the phone doesn't get this. */
-  .srctable tr,.srctable tr:first-child{display:table-row;border-bottom:none;padding:0}
+  .srctable thead{display:table-header-group}   /* a real header group, so print repeats it on every page */
+  .srctable tr{display:table-row;border-bottom:none;padding:0}
   .srctable td{display:table-cell;border-bottom:1px solid var(--line);padding:7px 6px;vertical-align:top}
   .srctable td::before{content:none}
   .srctable td.srccell-site{display:table-cell;font-weight:400;font-size:inherit;margin-bottom:0}
@@ -833,6 +851,160 @@ footer a:hover{text-decoration-thickness:2px}
      stretch three short labels across 980px. */
   .tabbar{gap:6px}
   .tabbtn{flex:0 0 auto;padding:8px 18px;font-size:.95rem}
+}
+
+/* ==== PRINT / SAVE AS PDF — LAST in the stylesheet on purpose. =================
+   Everything here is inside @media print, so it cannot change a pixel on screen.
+   It is last so that, at equal specificity, it beats the theme blocks and the
+   640px block above it.
+
+   WHAT PAPER CHANGES (each of these was measured on the unprinted page):
+   1. Browsers DROP backgrounds when printing unless the person ticks "Background
+      graphics". Every bar, swatch, tier badge and zebra band here is a background,
+      so by default they simply vanished and the legend keys were blank boxes.
+      print-color-adjust:exact on everything makes them print regardless.
+   2. All four themes print on WHITE paper. Neon and Dusk are dark screens; printed
+      as designed they are a page of ink with a white border, and Neon's cyan
+      "Local" label is under 1.5:1 on white. Cream (Ledger) prints as a grey tint.
+      So each theme keeps its IDENTITY (title face, uppercase, accent, side-color
+      hues, warm = non-local / cool = local) but is restated for ink on paper.
+   3. THE SIDE COLORS ARE RETUNED FOR GREYSCALE. A laser printer prints these two
+      as grey. On screen the pairs differ in hue and are nearly equal in lightness
+      (1.05–1.5:1), so on a mono printer Local and Non-local bars looked
+      identical. In print, non-local is the lighter of the two and local the
+      darker, 2.1:1 or more apart in every theme, with BOTH still >= 4.5:1 on white
+      because the lane titles are text drawn in these colors.
+      Contrast on white (checked, not eyeballed): Daylight 4.6 / 9.9, Ledger
+      4.9 / 10.1, Neon 5.2 / 11.4, Dusk 4.8 / 11.1 (non-local / local).
+   4. The controls are dead on paper and are hidden; the state they set is not
+      lost: the "Showing 14 of 21 · MTB only · tiers V, M" line, the legend, and
+      the units caveat all stay. The View switch collapses to its selected word.
+   5. Closed <details> print as nothing. printPrepare() in the script opens every
+      note for the duration of the print and puts them back afterwards.
+   6. Page breaks: no site row, source row or legend line is cut in half, and the
+      source table's header row repeats on every page.
+   ============================================================================ */
+@page{
+  margin:.45in .5in .6in;
+  /* Margin boxes: Chrome/Edge 131+ draw these; anything older ignores them. Turn
+     off "Headers and footers" in the print dialog or the browser's own copy of the
+     date and address collides with them. */
+  @bottom-left{content:"postmillenniumrenaissance.com/studies";font:8pt/1 sans-serif;color:#555}
+  @bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt/1 sans-serif;color:#555}
+}
+@media print{
+  /* ── Palette ─────────────────────────────────────────────────────────────────
+     The first selector is the default theme (no attribute yet, or Daylight); the
+     blocks after it restate ONLY what differs. Title face, case, tracking and
+     weight (--head-*) are deliberately NOT restated, so each theme keeps its own.
+     !important on color-scheme because applyTheme() writes it inline on <html>. */
+  :root,:root[data-theme]{
+    color-scheme:light !important;
+    --paper:#fff; --card:#fff;
+    --ink:#1c242c; --ink-soft:#3f4a55;
+    --line:#8f8f8f;                 /* hairlines and gridlines: 3.3:1, visible, not heavy */
+    --accent:#2f3a45;
+    --nonlocal:#c4510a; --local:#08437f;
+    --nonlocal-soft:#f1c6ad; --local-soft:#b8d2ec;   /* second stripe of the range hatch */
+    --calc:#6a4aa8;
+    --warn-bg:#fff;
+    --badge-ink:#fff;
+    --track-bg:#0000000d; --chip-bg:#00000014;
+    --rule-bg:var(--accent); --mast-rule:var(--ink);
+    --card-glow:0 0 0 #0000; --head-glow:none;
+  }
+  :root[data-theme="ledger"]{
+    --ink:#2b2420; --ink-soft:#4f453d; --accent:#7a4e22;
+    --nonlocal:#bd4f2c; --local:#1f4a35;
+    --nonlocal-soft:#e7c3b6; --local-soft:#c9dcd1;
+    --calc:#85600f;
+  }
+  :root[data-theme="neon"]{
+    --ink:#1c1238; --ink-soft:#4a3d73; --accent:#6a2fb0;
+    --nonlocal:#d0127f; --local:#00404f;
+    --nonlocal-soft:#f3b3d6; --local-soft:#a8dce8;
+    --calc:#7a5a00;
+    --rule-bg:linear-gradient(90deg,#d0127f,#6a2fb0,#00404f);   /* the screen's gradient, in print inks */
+    --mast-rule:#6a2fb0;
+  }
+  :root[data-theme="dusk"]{
+    --ink:#25211b; --ink-soft:#4d463b; --accent:#6b5326;
+    --nonlocal:#aa6000; --local:#163a73;
+    --nonlocal-soft:#f0cf9c; --local-soft:#b5cdea;
+    --calc:#6f4fb0;
+    --rule-bg:linear-gradient(90deg,#aa6000,#6b5326,#163a73);
+    --mast-rule:#8a8068;
+  }
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html,body{background:#fff}
+  body{font-size:11pt}
+  .wrap{max-width:none;padding:0}
+  a{color:inherit}
+
+  /* ── Chrome that has no use on paper ── */
+  .utilbar,.tabbar,.filterhead,.tooltip,.storybtnwrap,.notesall,.share-status,.sr-only{display:none !important}
+  .notedetails summary{display:none}      /* "Show note" is a button label; the note itself prints */
+  .masthead{margin-bottom:6px;padding:4px 0 8px}
+  .legend{margin:2px 0 8px}
+
+  /* ── The filter bar becomes one line of state plus the units caveat ──
+     .filterbody[hidden] is load-bearing on screen; here it is overridden on
+     purpose, because a folded filter bar must not swallow the caveat. */
+  .filterbar{border:0;background:none;box-shadow:none;padding:0;margin:0 0 8px}
+  .filtersum{font-size:.8rem;font-weight:700;color:var(--ink)}
+  .filterbody,.filterbody[hidden]{display:block;border:0;margin:4px 0 0;padding:0}
+  .filterbody>*:not(.note){display:none !important}   /* checkboxes and tier chips */
+  .filterbar .note{font-size:.76rem}
+
+  /* ── View switch: print the selected view as a word, drop the other buttons ── */
+  .axiscontrol .axisbtn[aria-pressed="false"]{display:none}
+  .axiscontrol .axisbtn[aria-pressed]{
+    min-height:0;padding:0;border:0;background:none;color:var(--ink);font-weight:800;font-size:.8rem;
+  }
+  .axisbtn::after,.tierbtn::after{display:none}
+  .axisrow{position:static}               /* sticky has nothing to stick to on paper */
+
+  /* ── Panels, charts ── */
+  .legend,.legendrow,.tierrow,.siterow,.barline,.axisnote,.rangewrap{break-inside:avoid}
+  .siterow{padding:7px 0}                 /* 10px on screen; this is what lets Log and Linear fit two pages, not three */
+  .srcnote,.rangewrap,.filterbar{box-shadow:none}
+  .srcnote{border-color:var(--line)}
+  .axisnote,.filtersum,.legend{break-after:avoid}
+  h3{break-after:avoid}
+  .storytext p,.srcnote p,.notedetails p{orphans:3;widows:3}
+
+  /* ── Source table ── */
+  /* Six columns across 7.5in left the Note column ~150px wide, so a 250-word caveat
+     printed as a ribbon and the table ran to 8 pages. Each row is now a grid: the
+     five figure/citation cells on one line, the note full-width underneath (and
+     the header row to match, minus its Note heading, which has nothing above it).
+     The grid is on <tr>, so the markup is untouched and the screen layouts are
+     unaffected. thead stays a real header group, which is what repeats it per page. */
+  .srctable{font-size:.7rem}
+  .srctable thead tr,.srctable tbody tr{
+    display:grid;column-gap:8px;border-bottom:1px solid var(--line);padding:5px 0;
+    grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,.95fr) minmax(0,2.1fr);
+  }
+  .srctable thead th:last-child{display:none}
+  .srctable th{padding:2px 0;font-size:.62rem;overflow-wrap:anywhere}
+  .srctable tr{break-inside:avoid}
+  .srctable td{border-bottom:0;padding:2px 0}
+  .srctable td[data-label="Note"],.srctable td[colspan]{grid-column:1/-1}
+  .srctable td:empty{display:none}
+  .srctable tr:last-child{border-bottom:0}
+  .srcnote,.srcfold{break-inside:auto}
+  .srcfold>summary{break-after:avoid}
+  .notedetails{flex-basis:auto}
+  /* A link on paper is a dead underline. Print where it points, small, breakable
+     anywhere so a long address wraps inside its column instead of widening the
+     table. Only http(s) hrefs — nothing is invented for a row with no link. */
+  .srclink{text-decoration:none;font-weight:600}
+  .srclink[href^="http"]::after{
+    content:"\A" attr(href);white-space:pre-wrap;display:block;margin-top:1px;
+    font-size:.82em;font-weight:400;color:var(--ink-soft);overflow-wrap:anywhere;word-break:break-all;
+  }
+  .srclink-icon{display:none}
+  footer{break-inside:avoid;font-size:.7rem;margin-top:10px;padding-top:8px}
 }
 </style>
 </head>
@@ -1439,6 +1611,10 @@ const STRIP_HIT_R=12;           // radius of the invisible circle that takes the
 const STRIP_PAD=14;             // left and right margin inside the plot, so an edge dot is not clipped
 const STRIP_CHAR_PX=6.6;        // average width of one 12px label character, used to decide how many fit
                                  // beside a dot. A little generous on purpose: too wide just truncates early
+const PRINT_RANGE_W=740;         // Range view: width it is redrawn at for print, CSS px. Portrait Letter and A4 both
+                                // leave 698-720px between the margins, so 740 scales DOWN slightly (~0.95) and the
+                                // 12px labels still print at ~8.5pt. Drawn at screen width (often 950+) and scaled down, they
+                                // printed at ~7pt. Raise it and the print labels shrink; lower it and they grow.
 const WIDE_MIN_PX=640;          // the one phone/desktop breakpoint the script needs to know about; it
                                  // matches the 640px @media block. Picks the tick set and whether the
                                  // filter bar starts open
@@ -1736,6 +1912,7 @@ function wireBarEvents(container){
    the row is pointed at, because fifteen names at once made the plot a wall of
    text. Names are truncated to fit; the tooltip has the full one. ======================================== */
 let stripW=0;   // the width the Range view was last drawn at, for the resize handler
+let printWidth=null;   // non-null only WHILE printing: the width renderRangeView draws at instead of measuring the panel
 function renderRangeView(container,rows){
   let html=viewHeadHtml();
   if(rows.length===0){
@@ -1744,8 +1921,8 @@ function renderRangeView(container,rows){
     return;
   }
   // .rangewrap pads 10px each side and borders 1px; measure what is really left.
-  const W=Math.max(280, container.clientWidth-22);
-  stripW=container.clientWidth;
+  const W=printWidth!=null ? printWidth : Math.max(280, container.clientWidth-22);
+  if(printWidth==null) stripW=container.clientWidth;   // a print redraw must not poison the resize handler's memory
   const x=v=>STRIP_PAD+logPct(v)/100*(W-2*STRIP_PAD);
   const ticks=logTicks();
   const lanes=[
@@ -1944,13 +2121,13 @@ function renderSources(container){
         <button type="button" class="notesall" id="notesAll" aria-pressed="false">${esc(UI_TEXT.showAllNotes)}</button>
       </div>
       <div style="overflow-x:auto"><table class="srctable">
-        <tr>
+        <thead><tr>
           <th>Site</th>
           <th><span class="swatch" style="background:var(--nonlocal)"></span>Non-local / out-of-town</th>
           <th><span class="swatch" style="background:var(--local)"></span>Local / resident</th>
           <th>Confidence</th><th>Source</th><th>Note</th>
-        </tr>
-        ${srcRows}
+        </tr></thead>
+        <tbody>${srcRows}</tbody>
       </table></div>
     </div>
     <details class="srcnote srcfold">
@@ -1961,13 +2138,13 @@ function renderSources(container){
       rate, and a rate is only honest if the screen says which one and as of when — so that is a deliberate
       gap, not an oversight.</p>
       <div style="overflow-x:auto"><table class="srctable">
-        <tr>
+        <thead><tr>
           <th>Site</th>
           <th><span class="swatch" style="background:var(--nonlocal)"></span>Non-local / out-of-town</th>
           <th><span class="swatch" style="background:var(--local)"></span>Local / resident</th>
           <th>Confidence</th><th>Source</th><th>Note</th>
-        </tr>
-        ${foreignRows}
+        </tr></thead>
+        <tbody>${foreignRows}</tbody>
       </table></div>
     </details>
     <details class="srcnote srcfold">
@@ -2327,6 +2504,41 @@ window.addEventListener("resize",()=>{
     if((axisMode==="log" && crossed) || (axisMode==="range" && Math.abs(panel.clientWidth-stripW)>8)) renderActiveTab();
   }, RESIZE_DEBOUNCE_MS);
 });
+
+/* ── Printing ─────────────────────────────────────────────────────────────────
+   Two things CSS cannot do on its own. (1) A closed <details> prints as nothing,
+   and every study's note — where its caveats live — is one. So for the duration
+   of a print every note and fold is opened, then put back EXACTLY as it was: a
+   note the reader had opened stays open, one they had not closes again. (2) The
+   Range view is SVG drawn at the screen's pixel width; scaled down to a page it
+   prints at about 7pt. It is redrawn at PRINT_RANGE_W while printing.
+   beforeprint/afterprint cover Chrome, Edge and Firefox; Safari fires only the
+   matchMedia("print") change, so both are listened to, and printPrepare() is
+   idempotent so a browser that fires both does the work once. ──────────────── */
+let printSnapshot=null;   // the <details> elements that were closed before printing, or null when not printing
+function printPrepare(){
+  if(printSnapshot) return;
+  printSnapshot=[...document.querySelectorAll("details:not([open])")];
+  printSnapshot.forEach(d=>{ d.open=true; });
+  if(activeTab==="bysite" && axisMode==="range"){
+    printWidth=PRINT_RANGE_W;
+    renderActiveTab();
+  }
+}
+function printRestore(){
+  if(!printSnapshot) return;
+  printSnapshot.forEach(d=>{ d.open=false; });
+  printSnapshot=null;
+  if(printWidth!=null){
+    printWidth=null;
+    renderActiveTab();
+  }
+}
+window.addEventListener("beforeprint",printPrepare);
+window.addEventListener("afterprint",printRestore);
+try{
+  window.matchMedia("print").addEventListener("change",e=>{ e.matches ? printPrepare() : printRestore(); });
+}catch(e){ /* very old Safari lacks addEventListener on MediaQueryList; beforeprint/afterprint still cover it */ }
 
 function init(){
   // Resolve a deep link BEFORE anything is built, so the requested tab paints
