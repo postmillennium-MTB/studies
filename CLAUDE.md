@@ -205,7 +205,7 @@ tidy up reintroduces the bug.
 - Renders at phone width with **no horizontal page scroll** — check with
   `window.scrollTo(9999,0)` then read `window.scrollX`, on every tab, at 320px and
   360px. `body.scrollWidth` will lie to you. Touch targets ≥ 40px
-- Both themes switch cleanly, and the default paints correctly before JS runs
+- Every theme switches cleanly, and the default paints correctly before JS runs
 - New palette values clear WCAG AA (4.5:1) against both `--paper` and `--card`
 - Home link `target="_top"`; external links `target="_blank" rel="noopener"`
 - Favicons stay relative (no leading slash) — this is served from a github.io subpath
