@@ -922,7 +922,10 @@ footer a:hover{text-decoration-thickness:2px}
      site    display name of the trail system / region
      st      state or region abbreviation, shown in parentheses
      yr      year of study (publication year, not necessarily survey year)
-     mtb     "y" = mountain-bike-specific trail/survey
+     mtb     grades the STUDY the figure came from, never the place. A town can be
+             a mountain bike capital and still have an "n" row if the number was
+             read from a survey of all bicycling.
+             "y" = mountain-bike-specific trail/survey
              "n" = general cycling or multi-use trail — shown only when the
                    "MTB-specific only" filter is unchecked
      unit    the basis the source itself used: "day" | "night" | "trip" | "visit"
@@ -1248,7 +1251,7 @@ const STORIES=[
  paras:[
   "Bentonville answers a question the rest of this table keeps asking: what happens when someone with capital decides a place should be a mountain bike town? It is the world headquarters of Walmart, a small city that had hosted business travelers for decades. The trail story is usually traced to Tom Walton and the Walton Family Foundation. The first phase of the Slaughter Pen system, about five miles built by a local nonprofit, the Trailblazers, and paid for by the Foundation, opened in 2007, on land that, by one account, the family had built trails on and later gave to the city. Expansions followed in 2010 and 2012, and in 2013 Slaughter Pen was connected to downtown, which the Trailblazers' chief executive describes as the point when use took off. The Back 40 system followed, reached by the Razorback Greenway, a paved path that runs through Slaughter Pen and past the Crystal Bridges museum.",
   "The second turning point was 2016, when Bentonville was chosen to host the IMBA World Summit, which the Trailblazers' chief executive calls the moment it became a tourist destination. “Mountain Bike Capital of the World” is branding, and one local blog calls it a bold claim; IMBA's Ride Center list rates the city Silver-level. Mileage quoted for the system varies by source and year, from the teens to the dozens, so none is given here. What is not in dispute is the shape of the thing: the trails are connected to the town, and the same source says that link to downtown is what made the system far more used.",
-  "That is also why this row sits where it does. It is tiered Low and marked not MTB-specific: it comes from a 2023 University of Arkansas study of bicycling across Northwest Arkansas, road, gravel, paths and singletrack together, with an earlier 2018 study by BBC Research covering the same ground. The figure is a statewide Arkansas tourism-average stay applied to bicycling visitors identified through device data, then halved by this tool to a daily number, not a survey of mountain bikers. Both studies were commissioned by the Walton Family Foundation, which also helped pay for much of the trail. That is not a reason to doubt them, but it is context a reader should have when a number from this place is used to argue for building trails somewhere else."
+  "That is also why this row sits where it does, and it is easy to misread. “Not MTB-specific” is a label on the study, not on the town: Bentonville is exactly the place the sport's marketing calls its capital. The row is tiered Low and marked that way because it comes from a 2023 University of Arkansas study of bicycling across Northwest Arkansas, road, gravel, paths and singletrack together, with an earlier 2018 study by BBC Research covering the same ground. The figure is a statewide Arkansas tourism-average stay applied to bicycling visitors identified through device data, then halved by this tool to a daily number, not a survey of mountain bikers. Both studies were commissioned by the Walton Family Foundation, which also helped pay for much of the trail. That is not a reason to doubt them, but it is context a reader should have when a number from this place is used to argue for building trails somewhere else."
  ],
  links:[
   {t:"University of Arkansas: the 2023 report",u:"https://news.uark.edu/articles/64528/new-report-shows-health-and-economic-benefits-of-biking-in-nwa"},
@@ -1374,6 +1377,10 @@ const HASH_ALIASES=[
    viewLabel  the Linear / Log / Range switch's label and accessible name.
    laneNonlocal / laneLocal / laneEmpty / rangeAria   the Range view's lane titles,
               the line printed in a lane with nothing in it, and the plot's name.
+   notMtb     the tag on a Sources row whose STUDY is not about mountain biking. It
+              describes the study, not the place: Bentonville is a famous mountain
+              bike town and its row is still tagged, because the figure came from a
+              survey of all bicycling.
    storyBtn / storyAria / storyNote / storyLinks   the Sources tab's place-story chevron,
               its accessible name ({site} is the row's name), the line that says what
               a story is NOT, and the label before its links.
@@ -1388,6 +1395,7 @@ const UI_TEXT={
   laneNonlocal:"Non-local / out-of-town", laneLocal:"Local / resident",
   laneEmpty:"No figure reported in the studies shown.",
   rangeAria:"Every reported figure on a log scale, non-local above local",
+  notMtb:"— study not MTB-specific",
   storyBtn:"The story", storyAria:"The story of {site}",
   storyNote:"Background on the place, written by Claude from public web sources. It is not part of the study and not one of the sourced figures.",
   storyLinks:"Where it comes from:",
@@ -1911,7 +1919,7 @@ function renderSources(container){
     // data-label is what the phone layout prints in place of the column heading
     // it doesn't have — see the CSS note on .srctable.
     srcRows+=`<tr>
-      <td class="srccell-site">${esc(s.site)} (${esc(s.st)}, ${s.yr})${s.mtb==='n'?' <em>— not MTB-specific</em>':''}${storyBtn(s)}</td>
+      <td class="srccell-site">${esc(s.site)} (${esc(s.st)}, ${s.yr})${s.mtb==='n'?` <em>${esc(UI_TEXT.notMtb)}</em>`:''}${storyBtn(s)}</td>
       ${srcValueCell(s,"nl","Non-local")}
       ${srcValueCell(s,"lo","Local")}
       <td data-label="Confidence">${tierBadge(s.conf)}</td>

@@ -100,6 +100,7 @@ This tool's entire value is that it does not inflate certainty.
   with the arithmetic written out in its note.
 - **A gap beats a guess.** If a source printed no rate and none can be derived from
   its own printed numbers, the field stays empty.
+- **`mtb` grades the study, not the place.** Bentonville is a famous mountain bike town and its row is `mtb:"n"`, because the figure was read from a study of all bicycling in Northwest Arkansas. If an MTB-specific figure for the same place is ever found in a source, it is a new row (`mtb:"y"`), not a change to this one.
 - **Tier honestly.** `conf` grades *how the number was obtained*, not how good the
   study or the trail is. Chattanooga is `V` on a narrow study; that is correct and
   has been questioned once already.
