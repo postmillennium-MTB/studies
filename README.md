@@ -27,15 +27,15 @@ smoothing over the three things that make them hard to compare:
 
 | Control | Effect |
 |---|---|
-| **Filters** (button) | Folds the controls below away. Shut by default on a phone, open from 640px up. The line under it always states what is filtered: *Showing 15 of 21 · MTB only · all tiers* |
+| **Filters** (button) | Folds the controls below away. Shut by default on a phone, open from 640px up. The line under it always states what is filtered: *Showing 13 of 21 · MTB only · tiers V, M* |
 | **MTB studies only** | Hides the 6 general-cycling / paved-trail comparison entries |
 | **Show ranges** | Draws the high bound where a source gave a range instead of one number |
 | **Show study names** (Range view only) | Unticked by default: a Range row shows only its unit until you point at it. Ticked, every study name is printed at once |
-| **Confidence** chips | Show or hide each tier |
-| **View: Linear / Log / Range** (By Site) | **Linear** draws bars from $0 to $650. **Log** draws the same rows as dots on a log axis ($2 to $800) with gridlines; it is never drawn as bars, because a log axis has no zero. **Range** is the original Range plot: every figure from every study on one log axis, non-local above local, each reported range drawn as a dot, a line and a dot. Every dot always shows its unit; point at a row to see the study name (on a phone, tap a dot for the tooltip), or tick **Show study names** |
+| **Confidence** chips | Show or hide each tier. **Low starts unticked**, so the tool opens showing Verified and Medium only; tick it to bring the Low rows back |
+| **View: Linear / Log / Range** (By Site) | **The tool opens on Range.**  **Linear** draws bars from $0 to $650. **Log** draws the same rows as dots on a log axis ($2 to $800) with gridlines; it is never drawn as bars, because a log axis has no zero. **Range** is the original Range plot: every figure from every study on one log axis, non-local above local, each reported range drawn as a dot, a line and a dot. Every dot always shows its unit; point at a row to see the study name (on a phone, tap a dot for the tooltip), or tick **Show study names** |
 | **By Site** tab | Paired non-local / local marks, one row per site, one shared dollar axis |
-| **Sources** tab | Why units aren't normalized, tier definitions, the citation table (each note folds behind *Show note*; *Show all notes* opens them), then two folded sections: studies held out for currency, and deliberate exclusions |
-| **Theme switch** (top right) | Four palettes: **Ledger** (cream, the default), **Neon** (1990s blacklight), **Daylight** (cool white, orange/blue — the most colorblind-safe) and **Dusk** (warm dark, low glare). Swatches only on a phone, names from 760px up. Remembered per browser; the tool works fine if that storage is blocked |
+| **Sources** tab | Why units aren't normalized, tier definitions, the citation table (each note folds behind *Show note*; *Show all notes* opens them), then two folded sections: studies held out for currency, and deliberate exclusions. Every study also has **The story** chevron: a short piece of background on the *place* (Anniston gets three paragraphs, so does Bentonville). It is background written from public sources, not a sourced figure, and is labeled as such |
+| **Theme switch** (top right) | Four palettes: **Daylight** (cool white, orange/blue — the most colorblind-safe; the default), **Ledger** (cream), **Neon** (1990s blacklight) and **Dusk** (warm dark, low glare). Swatches only on a phone, names from 760px up. Remembered per browser; the tool works fine if that storage is blocked |
 | **Share** (top right) | Copies or hands off the **PMR** URL, with the tab you are on appended |
 | **← PMR** (top left) | Back to the site. `target="_top"`, so it escapes the embed |
 
@@ -54,9 +54,10 @@ Every tab has its own address, and the Share button builds it for you:
 
 | Link | Opens on |
 |---|---|
-| `…/studies/` | By Site |
-| `…/studies/#range` | By Site, Range view (this was its own tab; old links still land on the same plot) |
+| `…/studies/` | By Site, Range view (the default) |
+| `…/studies/#range` | The same Range view (this was its own tab; old links still land on the same plot) |
 | `…/studies/#log` | By Site, Log view |
+| `…/studies/#linear` | By Site, Linear view (the bars) |
 | `…/studies/#sources` | Sources |
 
 These work through the PMR wrapper page, which forwards the hash into the frame

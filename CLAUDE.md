@@ -52,7 +52,7 @@ permission policy and the postMessage bridge follows from that.
   masthead, tab bar, filter bar, panels — mostly empty shells that JS fills
   <script>
     ==== one contiguous DATA block ====
-    SITES · CONF_META · UNIT_META · link icons · FOREIGN_SITES
+    SITES · CONF_META · UNIT_META · link icons · FOREIGN_SITES · STORIES
     SHARE/HOME URLs · PMR_ORIGINS · EXCLUSIONS · THEMES · TABS
     /* ===== END OF DATA — everything below is logic ===== */
     tuning constants, render functions, theme, share, deep links, init()
@@ -77,6 +77,7 @@ inline in a render function, or a threshold living inside an `if`, is a bug.
 | a tab | write the render function, add one line to `TABS` (it becomes shareable at `/studies/#<id>` for free) |
 | a theme | one entry in `THEMES` + one CSS `[data-theme="…"]` block. Nothing else — not even the pre-paint shim |
 | an exclusion | one entry in `EXCLUSIONS` |
+| a place story | one entry in `STORIES` — `ids` are the `SITES` / `FOREIGN_SITES` ids it covers (two rows about one place share one entry), `paras`, and up to three `links`. A new site with no story simply shows no chevron |
 
 **Mobile-first.** Base styles are the phone; `@media (min-width: …)` adds the desktop.
 Touch targets ≥ 40px.
@@ -99,6 +100,7 @@ This tool's entire value is that it does not inflate certainty.
   with the arithmetic written out in its note.
 - **A gap beats a guess.** If a source printed no rate and none can be derived from
   its own printed numbers, the field stays empty.
+- **`mtb` grades the study, not the place.** Bentonville is a famous mountain bike town and its row is `mtb:"n"`, because the figure was read from a study of all bicycling in Northwest Arkansas. If an MTB-specific figure for the same place is ever found in a source, it is a new row (`mtb:"y"`), not a change to this one.
 - **Tier honestly.** `conf` grades *how the number was obtained*, not how good the
   study or the trail is. Chattanooga is `V` on a narrow study; that is correct and
   has been questioned once already.
@@ -124,11 +126,13 @@ This tool's entire value is that it does not inflate certainty.
 Several comments in `index.html` mark bugs that already happened. Deleting one to
 tidy up reintroduces the bug.
 
-- **CSS theme order.** `:root` and `[data-theme="ledger"]` have identical specificity,
-  so whichever is declared last wins. The default theme's block goes **first** and
-  carries the bare `:root` selector, which is also what paints before JS runs.
-  Changing the default means moving that selector, moving the block, setting
-  `DEFAULT_THEME`, and updating the `theme-color` meta.
+- **CSS theme order.** `:root` and `[data-theme="x"]` have identical specificity,
+  so whichever is declared last wins. The default theme's block (**Daylight**) goes
+  **first** and carries the bare `:root` selector, which is also what paints before JS
+  runs. Every other theme is a plain `[data-theme]` block after it and must state
+  *every* variable itself, or it inherits Daylight's. Changing the default means
+  moving that selector, moving the block, giving the old default a `[data-theme]`
+  selector, setting `DEFAULT_THEME`, and updating the `theme-color` meta.
 - **`--card-glow` is a transparent shadow, not `none`.** It sits inside
   comma-separated `box-shadow` lists, and `none` is illegal as a list item — it would
   kill the whole rule.
@@ -188,6 +192,13 @@ tidy up reintroduces the bug.
   tracks. Widen the variable if a value overflows; never let the column size itself.
 - **The Range view is SVG measured at render time, and the 22 is the card.** `renderRangeView` takes the panel's width minus 22 (the `.rangewrap` card's 10px padding and 1px border, both sides). Change that padding and change the 22. It redraws only when the width really changes (a rotation), not when a phone's address bar resizes its height; the tap targets are invisible 12px circles (half a row, so neighbours never overlap), drawn last inside each row so no label or dot paints over them.
 - **Every dot in the Range view shows its unit at all times; only the study NAME is hover-only.** The old Range tab's bare dots broke the rule that every value carries its unit, and hiding the name must not bring that back. The unit is its own `<text>` and the name (`.stripname`, via `fitName`) is a second one beyond it, so truncating the name can never drop the unit. Each row is one `<g class="striprow">` so that pointing at any part of it, not just the dot, reveals the name. There is deliberately no fade: it lags a cursor sweeping down the plot. The filter bar's *Show study names* checkbox (off by default, `filterShowNames`) forces every name visible via a `shownames` class on the SVG; it appears only while the active view has `names:true` in `AXES`, and `setAxis()` re-syncs it.
+- **Defaults live in three named places:** `DEFAULT_THEME` (Daylight), `DEFAULT_AXIS`
+  (Range) and `CONF_META[k].shown` (Low starts unticked). The default view's address
+  is the bare URL, so `shareUrl()` returns no hash for it; Linear has its own
+  `#linear` alias now. Do not reintroduce "the first entry is the default" — it is why
+  reordering the View switch used to change what the tool opened on.
+- **A story is background, never data.** It must not restate a dollar figure from the table (an edited row would then contradict its own story), and where public sources disagree (trail mileage, opening years) it says so or leaves the number out. It is always printed with `UI_TEXT.storyNote` so a reader can tell it from a sourced figure. Its links come from search results and were **not opened** when written (the build environment could not reach outside hosts), so click-test them before relying on one.
+- **`.srctable tr.storyrow[hidden]{display:none}` is load-bearing,** for the same reason as `.filterbody[hidden]`: `.srctable tr` sets `display:block` (phone) or `table-row` (desktop) and outranks the attribute. The story cell is `display:block` on the phone and `table-cell` (colspan 6) from 640px; it is a whole extra row, not text in the Site cell, because that column is ~150px wide on a desktop.
 - **`#range` is the Range view, `#log` is the Log view.** `#range` was briefly pointed at Log during Pass 2, which was wrong: existing links to it meant the two-lane plot.
 - **The Log axis draws dots, never bars.** A bar's length is its value from a baseline,
   and a log axis has no zero, so a log-scaled bar's length means nothing. Dots claim
@@ -271,6 +282,7 @@ the sessions that built this could not open external PDFs.
 
 **Build**
 
+- **Stories hide with their rows.** The Sources table obeys the filters, so with the defaults (MTB studies only, Low off) the stories for every non-MTB row and every Low row — Bentonville, CAMBA, Keene, James River — are not reachable until the filters are widened. Considered and left as is: it matches every other table on the tab, and the "Showing N of 21" line says rows are hidden.
 - **No headline stat.** "11 of 15 MTB studies never surveyed locals" is the strongest
   finding in the dataset and is currently only visible by scrolling past "not
   reported" eleven times.
