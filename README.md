@@ -92,8 +92,9 @@ appendix is the only route to several site figures and those original reports ha
 been read directly. That is stated on every affected row rather than averaged away.
 
 Rows marked `calc` carry arithmetic performed on a figure the source printed (for
-example, dividing an annual total by trips per year). The arithmetic is written out in
-the row's note. Where a source printed no rate and none could be derived from its own
+example, dividing an annual total by trips per year). The row's note writes out the
+arithmetic and says why it was done: to put the figure on the same footing as the rows
+beside it, because the source printed no figure in that unit. Where a source printed no rate and none could be derived from its own
 numbers, the field is left empty rather than estimated.
 
 ## Known open items
