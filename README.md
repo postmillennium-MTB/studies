@@ -29,9 +29,10 @@ smoothing over the three things that make them hard to compare:
 |---|---|
 | **MTB-specific studies only** | Hides the 6 general-cycling / paved-trail comparison entries |
 | **Show reported ranges** | Draws the high bound where a source gave a range instead of one number |
+| **Showing N of 21 figures** (filter bar) | Not a control — how many of the registered figures the current filters let through, on every tab |
 | **By Site** tab | Paired non-local / local bars, one row per site, shared linear $ axis |
-| **Range (all studies)** tab | Log-scale strip plot of every reported figure |
-| **Sources & Methodology** tab | Tier definitions, the citation table, deliberate exclusions |
+| **Range** tab | Log-scale strip plot of every reported figure |
+| **Sources** tab | Tier definitions, the citation table, deliberate exclusions |
 | **Theme switch** (top right) | Two palettes: **Ledger** (cream, the default) and **Neon** (1990s blacklight). Remembered per browser; the tool works fine if that storage is blocked |
 | **Share** (top right) | Copies or hands off the **PMR** URL, with the tab you are on appended |
 | **← PMR** (top left) | Back to the site. `target="_top"`, so it escapes the embed |
@@ -52,8 +53,8 @@ Every tab has its own address, and the Share button builds it for you:
 | Link | Opens on |
 |---|---|
 | `…/studies/` | By Site |
-| `…/studies/#range` | Range (all studies) |
-| `…/studies/#sources` | Sources & Methodology |
+| `…/studies/#range` | Range |
+| `…/studies/#sources` | Sources |
 
 These work through the PMR wrapper page, which forwards the hash into the frame
 on load and posts later changes across. In a Pinkbike embed there is no such
