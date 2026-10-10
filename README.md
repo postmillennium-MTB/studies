@@ -27,12 +27,13 @@ smoothing over the three things that make them hard to compare:
 
 | Control | Effect |
 |---|---|
-| **MTB-specific studies only** | Hides the 6 general-cycling / paved-trail comparison entries |
-| **Show reported ranges** | Draws the high bound where a source gave a range instead of one number |
-| **Showing N of 21 figures** (filter bar) | Not a control — how many of the registered figures the current filters let through, on every tab |
-| **By Site** tab | Paired non-local / local bars, one row per site, shared linear $ axis |
-| **Range** tab | Log-scale strip plot of every reported figure |
-| **Sources** tab | Tier definitions, the citation table, deliberate exclusions |
+| **Filters** (button) | Folds the controls below away. Shut by default on a phone, open from 640px up. The line under it always states what is filtered: *Showing 15 of 21 · MTB only · all tiers* |
+| **MTB studies only** | Hides the 6 general-cycling / paved-trail comparison entries |
+| **Show ranges** | Draws the high bound where a source gave a range instead of one number |
+| **Confidence** chips | Show or hide each tier |
+| **Scale: Linear / Log** (By Site) | Linear draws bars from $0 to $650. Log draws dots on a log axis ($2 to $800) with gridlines; a ranged figure is a line between two dots. Log spreads the low end out; it is never drawn as bars, because a log axis has no zero |
+| **By Site** tab | Paired non-local / local marks, one row per site, one shared dollar axis |
+| **Sources** tab | Why units aren't normalized, tier definitions, the citation table (each note folds behind *Show note*; *Show all notes* opens them), then two folded sections: studies held out for currency, and deliberate exclusions |
 | **Theme switch** (top right) | Four palettes: **Ledger** (cream, the default), **Neon** (1990s blacklight), **Daylight** (cool white, orange/blue — the most colorblind-safe) and **Dusk** (warm dark, low glare). Swatches only on a phone, names from 760px up. Remembered per browser; the tool works fine if that storage is blocked |
 | **Share** (top right) | Copies or hands off the **PMR** URL, with the tab you are on appended |
 | **← PMR** (top left) | Back to the site. `target="_top"`, so it escapes the embed |
@@ -53,7 +54,7 @@ Every tab has its own address, and the Share button builds it for you:
 | Link | Opens on |
 |---|---|
 | `…/studies/` | By Site |
-| `…/studies/#range` | Range |
+| `…/studies/#range` | By Site on the Log scale (this was the Range tab until it became a scale setting; old links still work) |
 | `…/studies/#sources` | Sources |
 
 These work through the PMR wrapper page, which forwards the hash into the frame
@@ -73,6 +74,9 @@ claim. The unit badge on every value is load-bearing; read it.
 ## Data source and confidence
 
 Every row carries a `conf` tier. This is an honesty mechanism, not cosmetic metadata.
+The badge is a letter, a word and a fill — **V** solid, **M** tinted, **L** a dashed
+outline — and deliberately **no color**: the tiers used to be green, amber and red, and
+the green was the Local bar's green.
 
 | Tier | Meaning | Count |
 |---|---|---|
@@ -104,7 +108,7 @@ numbers, the field is left empty rather than estimated.
 ## Held out of the charts — other currencies
 
 Studies reported in a currency other than USD are read, tiered and listed in the
-Sources tab, but **not plotted**. Both charts share one dollar axis, and a figure
+Sources tab, but **not plotted**. The chart shares one dollar axis, and a figure
 in another currency drawn on it reads as directly comparable when it isn't.
 
 Currently one: **Nelson–Tasman, NZ** (BERL 2018 for Nelson City Council).

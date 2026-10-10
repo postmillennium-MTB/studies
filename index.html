@@ -32,15 +32,17 @@
     · SHARE + HOME ................ the canonical PMR addresses this tool hands
                                      out, and the origins allowed to talk to it
     · THEMES registry ............. color themes — add one line to add one
-    · TABS registry ............... the 3 tabs — add one line to add one
+    · TABS registry ............... the 2 tabs — add one line to add one
+    · AXES + HASH_ALIASES ......... the Linear / Log scales, and old addresses
+                                     ("#range") that open a view of a tab
     · UI_TEXT + LEGEND_KEY ........ interface strings and the legend entries that
                                      explain a mark (hatch, calc) rather than a
                                      cohort or tier
-    · tuning constants ............ bar heights, dot radii, axis padding (named)
+    · tuning constants ............ the dollar axes' limits and ticks (named)
     ==== everything past "END OF DATA" is logic ====
     · scale helpers ............... $ value -> pixel position, per chart
-    · renderBySite() .............. "By Site" tab: paired local/non-local bars
-    · renderRange() ............... "Range" tab: log-scale strip plot
+    · renderBySite() .............. "By Site" tab: paired local/non-local marks,
+                                     bars (Linear) or dots (Log)
     · renderSources() ............. "Sources" tab (methodology, tiers, citations)
     · theme switch ................ applyTheme / buildThemeSwitch
     · share ....................... shareUrl / wireShare — native sheet, then
@@ -134,15 +136,15 @@
   --local:#3d6b52;       /* moss — local / resident spending */
   --nonlocal-soft:#e7c3b6;
   --local-soft:#c9dcd1;
-  /* Confidence tier colors — see CONF_META in the data block for the wording
-     each color pairs with. Never color alone: every tier also renders a
-     letter badge (V / M / L). */
-  --tier-v:#3d6b52;
-  --tier-m:#85600f;      /* was #a8791f: white-on-amber was 3.87:1 and the amber
-                            "calc" text 3.73:1, both under the 4.5:1 AA floor.
-                            This is 5.7:1 on white (the badge letter), 4.9:1 on
-                            --paper and 5.5:1 on --card. */
-  --tier-l:#a33d2e;
+  /* Confidence tiers carry NO color — see tierBadge() and .tierbadge. They used
+     to: V was this moss green (the same as --local) and L was a red within a few
+     degrees of --nonlocal, so a green badge sat directly above a green Local bar
+     and "verified" read as "local". A tier is now a fill treatment (solid /
+     tinted / dashed outline) in the theme's own ink, so no theme can ever
+     collide it with a cohort color. */
+  --calc:#85600f;        /* the italic "calc" flag only. Was #a8791f at 3.73:1,
+                            under the 4.5:1 AA floor; this is 4.9:1 on --paper
+                            and 5.5:1 on --card. */
   --warn-bg:#fbeee7;
   /* Surfaces that used to be hard-coded rgba-black literals down in the
      components. They have to be per-theme: a 3%-black bar track is simply
@@ -213,9 +215,7 @@
      way, darker, or the hatch flattens into a solid bar. */
   --nonlocal-soft:#6b1145;
   --local-soft:#08596b;
-  --tier-v:#39ff88;
-  --tier-m:#ffd028;
-  --tier-l:#ff5c7a;
+  --calc:#ffd028;
   --warn-bg:#2a1030;
   --badge-ink:#0d0b1a;   /* dark text on a bright badge. White on neon green is
                             about 1.3:1 — unreadable. */
@@ -254,10 +254,8 @@
    Here both data colors are saturated, so the accent is a neutral dark grey-blue
    that cannot be mistaken for either.
 
-   TIER COLORS ARE NOT RED/AMBER/GREEN HERE. Amber and red would sit a few
-   degrees of hue from the orange non-local bars and read as the same thing.
-   Green / violet / crimson keeps all three clear of both data colors; the
-   letter and the word on every badge still carry the tier, as everywhere.
+   CONFIDENCE TIERS HAVE NO COLOR in any theme now (see the Ledger block), so
+   there is no tier palette to keep clear of the orange and blue here.
 
    Every text color below clears WCAG AA (4.5:1) against both --paper and --card
    (checked, not eyeballed — see the verification list in the PR). The two -soft
@@ -274,9 +272,7 @@
   --local:#0a5aa8;
   --nonlocal-soft:#f1c6ad;
   --local-soft:#b8d2ec;
-  --tier-v:#1b7a47;
-  --tier-m:#6a4aa8;
-  --tier-l:#a8204e;
+  --calc:#6a4aa8;
   --warn-bg:#fdeee4;
   --badge-ink:#fff;
   --track-bg:#0f1c2a0d;
@@ -302,9 +298,7 @@
    and the same colorblind-safe axis as Daylight, brightened to hold up on a dark
    ground. They are deliberately not Neon's magenta/cyan.
 
-   The tier colors are mint / lilac / rose, for the same reason as Daylight: an
-   amber "Medium" badge would be the non-local bar color. The accent is a pale
-   sand, chrome only (links, focus, the tab underline).
+   The accent is a pale sand, chrome only (links, focus, the tab underline).
 
    Every text color clears AA (4.5:1) against both --paper and --card.
    The -soft pair is the darker second stripe of the hatched range; on a dark
@@ -321,9 +315,7 @@
   --local:#5ab0ff;
   --nonlocal-soft:#6a4818;
   --local-soft:#1c4a78;
-  --tier-v:#4fd18b;
-  --tier-m:#b79cf0;
-  --tier-l:#ff7a90;
+  --calc:#b79cf0;
   --warn-bg:#36281c;
   --badge-ink:#1b1a18;   /* dark text on a bright badge, as in Neon */
   --track-bg:#ffffff10;
@@ -428,7 +420,7 @@ a{color:var(--accent)}
 }
 .share-wrap.flash .share-status{opacity:1}
 @media(prefers-reduced-motion:reduce){
-  .share-btn,.share-status{transition:none}
+  .share-btn,.share-status,.filterbar.touched .chev{transition:none}
 }
 
 /* ── Masthead ─────────────────────────────────────────────────────────────── */
@@ -463,20 +455,42 @@ a{color:var(--accent)}
   font:inherit;font-weight:600;font-size:.92rem;color:var(--ink-soft);
   padding:8px 6px;min-height:44px;margin-bottom:-1px;border-radius:8px 8px 0 0;
 }
-.tabbtn[aria-pressed="true"]{color:var(--ink);font-weight:700;border-color:var(--line);border-bottom-color:var(--accent);background:var(--card)}
+.tabbtn[aria-selected="true"]{color:var(--ink);font-weight:700;border-color:var(--line);border-bottom-color:var(--accent);background:var(--card)}
 .tabbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .panel{display:none}
 .panel[data-active="true"]{display:block}
 
 /* ── Filter bar ───────────────────────────────────────────────────────────── */
+/* A disclosure, not a wall. Open, the controls took ~270px of a phone before a
+   single bar appeared; shut, the card is one 44px row plus a one-line summary of
+   what is currently filtered (see updateFilterSummary), so the filters stay
+   VISIBLE as state even while their controls are folded away. init() opens it by
+   default from 640px up, where there is room, and leaves it shut on a phone. */
 .filterbar{
-  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
   background:var(--card);border:1px solid var(--line);border-radius:10px;
-  padding:10px 12px;margin-bottom:14px;font-size:.84rem;box-shadow:var(--card-glow);
+  padding:2px 12px 8px;margin-bottom:12px;font-size:.84rem;box-shadow:var(--card-glow);
 }
+.filterhead{
+  appearance:none;width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  min-height:44px;padding:4px 0;border:0;background:none;color:var(--ink);
+  font:inherit;font-size:.92rem;font-weight:700;text-align:left;cursor:pointer;
+}
+.filterhead:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.filterhead .chev{width:18px;height:18px;flex:none}
+/* The flip animates only once a person has used the control (.touched, set on the
+   first click). Without that, the bar opens on desktop at load and visibly turns
+   its chevron over on every page view. */
+.filterbar.touched .chev{transition:transform .2s}
+.filterhead[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.filtersum{color:var(--ink-soft);font-size:.84rem;line-height:1.4;margin:0}
+.filterbody{
+  display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;
+  border-top:1px solid var(--line);margin-top:8px;padding-top:6px;
+}
+.filterbody[hidden]{display:none}   /* display:flex above would otherwise beat [hidden] */
 .filterbar label{display:flex;align-items:center;gap:6px;cursor:pointer;min-height:40px}
 .filterbar input[type="checkbox"]{width:17px;height:17px}
-.tierfilter{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.tierfilter{display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex-basis:100%}
 .tierfilter-label{font-weight:700;color:var(--ink);margin-right:2px}
 .tierbtn{
   appearance:none;cursor:pointer;font:inherit;font-size:.78rem;font-weight:600;
@@ -489,15 +503,16 @@ a{color:var(--accent)}
 .tierbtn[aria-pressed="false"] .tierbtn-label{text-decoration:line-through}
 .tierbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .filterbar .note{color:var(--ink-soft);font-size:.8rem;line-height:1.45;flex-basis:100%}
-/* How many of the registered figures the filters are letting through. Its own
-   line, above the note, so a viewer who has switched something off can see that
-   rows are missing without having to count them. */
-.filterbar .rowcount{flex-basis:100%;font-weight:700;font-size:.84rem}
 
 /* ── Legend ───────────────────────────────────────────────────────────────── */
-.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:.8rem;color:var(--ink-soft);margin:2px 0 16px}
+/* Two rows: what the MARKS mean (cohorts, range, calc), then what the confidence
+   BADGES mean. Both stay on screen when the filter bar is folded shut — the
+   tier chips inside it are the same badges, but they are hidden with it, and a
+   badge with no key beside it is exactly the "medium WHAT?" problem. */
+.legend{display:flex;flex-direction:column;gap:6px;font-size:.8rem;color:var(--ink-soft);margin:2px 0 14px}
+.legendrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
 .legend .item{display:flex;align-items:center;gap:6px}
-.legend .legend-label{font-weight:700;color:var(--ink);margin-left:2px}
+.legend .legend-label{font-weight:700;color:var(--ink)}
 .tierrow{display:flex;align-items:flex-start;gap:8px;line-height:1.45}
 .tierrow .tierbadge{margin-top:1px}
 .swatch{width:13px;height:13px;border-radius:3px;display:inline-block}
@@ -505,11 +520,33 @@ a{color:var(--accent)}
    built from the same two stripe colors as .barfill.range, so the key and the
    thing it explains cannot drift apart. */
 .swatch.hatch{background:repeating-linear-gradient(135deg,var(--nonlocal),var(--nonlocal) 3px,var(--nonlocal-soft) 3px,var(--nonlocal-soft) 6px)}
+/* On the log axis a range is a line between two dots, not a hatched bar, and the
+   key has to say what is actually on the screen. */
+.swatch.rangeline{width:20px;height:4px;border-radius:2px;background:var(--nonlocal);opacity:.75}
+/* ── Confidence badge ─────────────────────────────────────────────────────────
+   A tier is a TREATMENT, not a color: solid (Verified), tinted (Medium), dashed
+   outline (Low) — a certainty ramp from "filled in" to "left open", in whatever
+   the theme's own ink is. It was green / amber / red. The green was the Local
+   bar's green and the red sat a few degrees from the Non-local bar's, so a
+   green "V" beside a green bar read as "local", and a traffic light is a mild
+   form of the certainty inflation this tool exists to refuse. The letter and
+   the word on every badge still carry the tier, as ever; the shape now carries
+   it in greyscale too. --tb-ink / --tb-ground are the two colors the badge is
+   drawn from, redefined inside the tooltip, which is dark on the Ledger. ─── */
 .tierbadge{
+  --tb-ink:var(--ink);--tb-ground:var(--card);
   display:inline-flex;align-items:center;justify-content:center;
-  width:20px;height:20px;border-radius:4px;font-size:.75rem;font-weight:800;
-  color:var(--badge-ink);flex:none;
+  width:20px;height:20px;border-radius:4px;font-size:.75rem;font-weight:800;flex:none;
+  border:2px solid var(--tb-ink);color:var(--tb-ink);background:transparent;
 }
+.tooltip .tierbadge{--tb-ink:var(--tip-ink);--tb-ground:var(--tip-bg)}
+.tierbadge.look-solid{background:var(--tb-ink);color:var(--tb-ground)}
+.tierbadge.look-tint{
+  background:var(--chip-bg);   /* fallback for a browser without color-mix() */
+  background:color-mix(in srgb,var(--tb-ink) 18%,var(--tb-ground));
+}
+.tierbadge.look-outline{border-style:dashed}
+.tierbadge.look-unknown{border-style:dotted;color:var(--ink-soft);border-color:var(--ink-soft)}
 
 /* ── Site rows (By Site tab) ─────────────────────────────────────────────── */
 .siterow{border-bottom:1px solid var(--line);padding:10px 0}
@@ -519,7 +556,7 @@ a{color:var(--accent)}
 .siterow-meta{font-size:.78rem;color:var(--ink-soft);white-space:nowrap}
 .bargroup{display:flex;flex-direction:column;gap:6px}
 .barline{display:flex;align-items:center;gap:8px;min-height:24px}
-.barlabel{width:68px;flex:none;font-size:.78rem;font-weight:700;text-align:right;color:var(--ink-soft)}
+.barlabel{width:var(--lab-w);flex:none;font-size:.78rem;font-weight:700;text-align:right;color:var(--ink-soft)}
 .bartrack{flex:1;position:relative;height:22px;background:var(--track-bg);border-radius:4px;overflow:visible}
 .barfill{position:absolute;left:0;top:0;height:100%;border-radius:4px;min-width:3px;cursor:pointer}
 .barfill.local{background:var(--local)}
@@ -530,6 +567,9 @@ a{color:var(--accent)}
    the high bound — so square off the inner corners where they meet. */
 .barfill.rangelow{border-radius:4px 0 0 4px}
 .barfill.rangeext{border-radius:0 4px 4px 0;min-width:0}
+/* The two side columns' widths live on .barlist so the Log axis row above the rows
+   can use the SAME numbers and its ticks land exactly over the tracks. */
+.barlist{--lab-w:68px;--val-w:5.9rem}
 /* THE VALUE COLUMN IS A FIXED WIDTH, and that is load-bearing. Every bar is drawn
    as a percentage of its OWN track (BAR_MAX_DOLLARS), and the track is whatever
    width the row has left over after the value beside it. With a value column
@@ -544,7 +584,6 @@ a{color:var(--accent)}
    back on one line. tabular-nums gives every digit the same width so decimals
    line up down the column. */
 .barval{
-  --val-w:5.9rem;
   flex:none;width:var(--val-w);display:flex;flex-direction:column;align-items:flex-end;
   font-size:.9rem;font-weight:700;line-height:1.15;color:var(--ink);white-space:nowrap;
   font-variant-numeric:tabular-nums;
@@ -554,14 +593,55 @@ a{color:var(--accent)}
   font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em;
   color:var(--ink-soft);background:var(--chip-bg);border-radius:3px;padding:1px 4px;flex:none;
 }
-.calcflag{font-size:.75rem;font-weight:600;color:var(--tier-m);font-style:italic}
+.calcflag{font-size:.75rem;font-weight:600;color:var(--calc);font-style:italic}
 .nodata{font-size:.78rem;color:var(--ink-soft);font-style:italic;padding:2px 0}
 
-/* ── Range tab (strip plot) ───────────────────────────────────────────────── */
-.rangewrap{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 10px 8px;box-shadow:var(--card-glow)}
-.rangesvg{display:block;width:100%}
-.rangedot{cursor:pointer}
-.rangecap{font-size:.8rem;line-height:1.45;color:var(--ink-soft);margin-top:8px}
+/* ── Scale control, axis note and the Log axis ──────────────────────────────── */
+.axiscontrol{display:flex;align-items:center;gap:6px;margin:0 0 6px}
+.axiscontrol-label{font-size:.8rem;font-weight:700;color:var(--ink-soft);margin-right:2px}
+.axisbtn{
+  appearance:none;cursor:pointer;font:inherit;font-size:.84rem;font-weight:600;
+  min-height:40px;padding:4px 16px;border:1px solid var(--line);border-radius:999px;
+  background:var(--card);color:var(--ink-soft);
+}
+/* The selected scale is filled and bold, not merely tinted — and aria-pressed
+   carries it for assistive tech. */
+.axisbtn[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:700}
+.axisbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.axisnote{font-size:.8rem;line-height:1.45;color:var(--ink-soft);margin:0 0 8px}
+/* The tick labels, aligned to the tracks by sharing --lab-w / --val-w with the
+   rows. Sticky so the scale stays in view while you read down fifteen sites; if a
+   host page makes that impossible it simply scrolls away like any header. */
+.axisrow{
+  display:flex;align-items:flex-end;gap:8px;height:22px;
+  position:sticky;top:0;z-index:4;background:var(--paper);border-bottom:1px solid var(--line);
+}
+.axis-l{width:var(--lab-w);flex:none}
+.axis-r{width:var(--val-w);flex:none}
+.axis-track{flex:1;position:relative;height:100%}
+.axis-tick{
+  position:absolute;bottom:2px;transform:translateX(-50%);
+  font-size:.75rem;color:var(--ink-soft);font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+/* A Log track: the gridlines come from --grid on .barlist (one declaration), and
+   the final layer is the same track color a linear track uses. */
+.bartrack.logtrack{background:var(--grid),var(--track-bg)}
+.logrange{position:absolute;top:50%;height:4px;margin-top:-2px;border-radius:2px;opacity:.6}
+.logrange.nonlocal{background:var(--nonlocal)}
+.logrange.local{background:var(--local)}
+/* The dot is drawn by ::before so the element itself can be a larger, invisible
+   hit target — a 14px dot is a poor thing to land a thumb on. The ring in the
+   card color keeps a dot readable where it crosses a gridline. */
+.logmark{
+  position:absolute;top:0;width:22px;height:22px;margin-left:-11px;cursor:pointer;
+}
+.logmark::before{
+  content:"";position:absolute;left:4px;top:4px;width:14px;height:14px;border-radius:50%;
+  box-shadow:0 0 0 2px var(--card);
+}
+.logmark.nonlocal::before{background:var(--nonlocal)}
+.logmark.local::before{background:var(--local)}
+.logmark.hi::before{left:6px;top:6px;width:10px;height:10px;opacity:.7}
 
 /* ── Tooltip ──────────────────────────────────────────────────────────────── */
 .tooltip{
@@ -575,6 +655,23 @@ a{color:var(--accent)}
 /* ── Sources tab ──────────────────────────────────────────────────────────── */
 .srcnote{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:.85rem;line-height:1.5;box-shadow:var(--card-glow)}
 .srcnote h3{margin:0 0 6px;font-size:.94rem}
+/* Notes and the two long sections fold. The summary is the whole tap target, so it
+   is at least 40px tall; the default disclosure triangle is kept on purpose — it
+   is the one affordance every browser draws and every screen reader announces. */
+.srchead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.srchead h3{margin:0}
+.notesall{
+  appearance:none;cursor:pointer;font:inherit;font-size:.8rem;font-weight:600;
+  min-height:40px;padding:4px 14px;border:1px solid var(--line);border-radius:999px;
+  background:var(--card);color:var(--ink);
+}
+.notesall:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.notedetails{flex:1 1 10rem;min-width:0}
+.notedetails summary{cursor:pointer;display:flex;align-items:center;min-height:40px;color:var(--accent);font-weight:600}
+.notedetails summary:focus-visible,.srcfold>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.notedetails p{margin:0 0 6px;line-height:1.5;color:var(--ink)}
+.srcfold>summary{cursor:pointer;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:40px;font-weight:700;font-size:.94rem}
+.srcfold[open]>summary{margin-bottom:8px}
 /* ── Source tables ────────────────────────────────────────────────────────
    Mobile-first, and here that is not a stylistic preference — it is the fix for
    a real bug. Six columns of citation text have an intrinsic width of ~628px.
@@ -662,11 +759,12 @@ footer a:hover{text-decoration-thickness:2px}
   .srcval{white-space:nowrap}
   .masthead h1{font-size:2.2rem}
   .masthead .tagline{font-size:1rem}
-  .barlabel{width:78px;font-size:.82rem}
+  .barlabel{font-size:.82rem}
   .siterow-name{font-size:1rem}
   /* Room for the number, the unit and the calc flag on ONE line again, in a
      column that is still a fixed width — see the note on .barval. */
-  .barval{--val-w:9.5rem;flex-direction:row;align-items:baseline;justify-content:flex-end;gap:6px}
+  .barlist{--lab-w:78px;--val-w:9.5rem}
+  .barval{flex-direction:row;align-items:baseline;justify-content:flex-end;gap:6px}
   .valrow{margin-top:0}
   /* Tabs hand back their natural width; the phone's equal segments would
      stretch three short labels across 980px. */
@@ -713,14 +811,23 @@ footer a:hover{text-decoration-thickness:2px}
   <!-- Tabs and panels are BUILT FROM THE `TABS` REGISTRY in the script below. -->
   <div class="tabbar" id="tabbar" role="tablist"></div>
 
+  <!-- A disclosure: the button folds the controls away, and the summary line under
+       it (filled by updateFilterSummary) keeps the current filter state in view
+       either way. The controls are open by default from 640px up, shut on a phone
+       — init() decides, so this markup starts shut. -->
   <div class="filterbar" id="filterbar">
-    <label><input type="checkbox" id="mtbOnly" checked> MTB-specific studies only</label>
-    <label id="rangesControl"><input type="checkbox" id="showRanges" checked> Show reported ranges</label>
-    <!-- Confidence toggles are BUILT FROM CONF_META by buildTierFilters(). -->
-    <span class="tierfilter" id="tierFilter"></span>
-    <!-- Filled by updateRowCount() from UI_TEXT.rowCount. -->
-    <span class="rowcount" id="rowCount" role="status"></span>
-    <span class="note" id="filterNote">Bars and dots plot the dollar figure exactly as each study reported it. Studies measure different things — a day, a night, a trip, a whole visit — so a unit badge sits on every value. Don't read two different units as directly comparable; that inconsistency is itself part of the story (see Sources tab).</span>
+    <button type="button" class="filterhead" id="filterToggle" aria-expanded="false" aria-controls="filterBody">
+      <span>Filters</span>
+      <svg class="chev" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <p class="filtersum" id="filterSummary" role="status"></p>
+    <div class="filterbody" id="filterBody" hidden>
+      <label><input type="checkbox" id="mtbOnly" checked> MTB studies only</label>
+      <label id="rangesControl"><input type="checkbox" id="showRanges" checked> Show ranges</label>
+      <!-- Confidence toggles are BUILT FROM CONF_META by buildTierFilters(). -->
+      <span class="tierfilter" id="tierFilter"></span>
+      <span class="note" id="filterNote">Bars and dots plot the dollar figure exactly as each study reported it. Studies measure different things — a day, a night, a trip, a whole visit — so a unit badge sits on every value. Don't read two different units as directly comparable; that inconsistency is itself part of the story (see Sources tab).</span>
+    </div>
   </div>
 
   <div class="legend" id="legendTop"></div>
@@ -814,19 +921,23 @@ const SITES=[
 {id:"bentonville",site:"Bentonville / NW Arkansas (general cycling)",st:"AR",yr:2023,mtb:"n",unit:"day",nl:97,lo:null,conf:"l",calc:true,src:"BBC Research / Univ. of Arkansas 2023, pp.14–15",url:null,archiveUrl:null,note:"The underlying $194-over-a-2-day-stay figure is a statewide Arkansas tourism average applied to device-tracked bicycling visitors — not a bike-specific survey. $97/day = 194 ÷ 2, Claude's division."},
 ];
 
-/* ==== CONF_META — confidence tier -> label, color var, and plain-language
-   meaning. Rendered as a colored letter badge PLUS the word, never color alone.
+/* ==== CONF_META — confidence tier -> label, badge look, and plain-language
+   meaning. Rendered as a letter badge PLUS the word, never color alone — and
+   since the tiers lost their colors, the badge's own FILL carries it too.
+     look   "solid" | "tint" | "outline" — which .tierbadge treatment to draw
+            (a certainty ramp, filled in -> left open). A fourth tier needs a
+            look; if none of the three fits, add one .tierbadge.look-* rule.
    TO ADD A TIER: add one entry; every render function reads from this. ======== */
 const CONF_META={
-  v:{label:"Verified",  color:"var(--tier-v)", desc:"A primary study's own direct rider survey."},
-  m:{label:"Medium",    color:"var(--tier-m)", desc:"A blended/synthesis figure across trails, or reached only through a secondary compilation whose original study wasn't independently reviewed."},
-  l:{label:"Low",       color:"var(--tier-l)", desc:"Borrowed from an unrelated benchmark, a heavy generalizing assumption, a proxy not specific to mountain biking, or a figure that could not be traced back to the source cited beside it."},
+  v:{label:"Verified",  look:"solid",   desc:"A primary study's own direct rider survey."},
+  m:{label:"Medium",    look:"tint",    desc:"A blended/synthesis figure across trails, or reached only through a secondary compilation whose original study wasn't independently reviewed."},
+  l:{label:"Low",       look:"outline", desc:"Borrowed from an unrelated benchmark, a heavy generalizing assumption, a proxy not specific to mountain biking, or a figure that could not be traced back to the source cited beside it."},
 };
 
 /* Fallback for a `conf` value that is not in CONF_META. A typo in a data row used
    to throw inside tierBadge() and blank the entire tab; it now renders one visible
    "?" badge instead, so a bad row shows up as a bad row, not an empty page. */
-const CONF_FALLBACK={label:"Untiered", color:"var(--ink-soft)", desc:"No confidence tier set on this record — treat it as unverified."};
+const CONF_FALLBACK={label:"Untiered", look:"unknown", desc:"No confidence tier set on this record — treat it as unverified."};
 
 /* ==== UNIT_META — reporting basis -> short badge text. Deliberately NOT
    converted to a common unit; see filter-bar note. =========================== */
@@ -843,7 +954,7 @@ const SRC_LINK_ICON=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="
      curSym  how that currency prints, e.g. "NZ$"
 
    Nothing reads this array except renderSources(). These rows are deliberately
-   NOT in SITES, because both charts share one dollar axis: NZ$150 would draw a
+   NOT in SITES, because the chart shares one dollar axis: NZ$150 would draw a
    slightly longer bar than Coldwater's US$138.49 and read as the larger figure.
    That is a different failure from the cross-UNIT tension the tool already
    accepts and warns about. A reader seeing "/day" next to "/trip" knows the
@@ -945,8 +1056,8 @@ const THEME_STORAGE_KEY="pmrStudiesTheme";
 
 /* ==== TABS REGISTRY — the single source of truth for every tab. ============
    TO ADD A TAB: write your render function, then add ONE line here. The
-   button, the panel <div>, the show/hide logic, and the render dispatch all
-   derive from this array.
+   button, the panel <div>, the show/hide logic, the keyboard handling and the
+   render dispatch all derive from this array.
      id      unique key; the panel becomes <div id="p-{id}">
      label   visible button text
      render  name of the function that fills that panel (string, looked up by
@@ -954,7 +1065,7 @@ const THEME_STORAGE_KEY="pmrStudiesTheme";
              the file, so a direct reference here would hit a declaration-order
              trap)
      ranges  set false if the tab draws no reported ranges, which hides the
-             "Show reported ranges" control there.
+             "Show ranges" control there.
      chart   set false if the tab draws no bars or dots, which hides the filter
              bar's "Bars and dots plot the dollar figure…" note there — it would
              describe a chart that isn't on the screen.
@@ -962,29 +1073,66 @@ const THEME_STORAGE_KEY="pmrStudiesTheme";
              else is per-tab.
    Keep labels SHORT. On a phone the tabs are equal-width segments sharing one
    row at 320px; a long label makes its segment too narrow and wraps.
-   ============================================================================ */
+   There used to be a third tab, "Range", a separate log-scale dot plot of the
+   same figures. It is now the Log setting of AXES below, on By Site — one chart
+   with a scale switch instead of two charts to keep in step. ============== */
 const TABS=[
   {id:"bysite",  label:"By Site", render:"renderBySite",  ranges:true,  chart:true},
-  {id:"range",   label:"Range",   render:"renderRange",   ranges:true,  chart:true},
   {id:"sources", label:"Sources", render:"renderSources", ranges:false, chart:false},
 ];
 
+/* ==== AXES — the scales By Site can draw on. The first is the default. =======
+     id      "linear" | "log" — read by renderBySite / barLine, so a new axis
+             also needs a branch there; this registry only names and describes it
+     label   the button text
+     note    the one line printed above the chart saying what the geometry MEANS.
+             A log axis in particular cannot be read without being told.
+   ============================================================================ */
+const AXES=[
+  {id:"linear", label:"Linear", note:"Bars run from $0 to $650. Compare only bars with the same unit badge."},
+  {id:"log",    label:"Log",    note:"Log scale: each gridline is 10× the last, so equal spacing means equal ratio, not equal dollars. Compare only the same unit badge."},
+];
+
+/* ==== HASH_ALIASES — old or alternate addresses that open a particular VIEW of
+   a tab, not a different tab. "#range" was a tab until it became By Site's Log
+   axis; every link ever shared to it still lands on the same chart. shareUrl()
+   reads this in reverse, so the Share button keeps handing out "#range" for the
+   log view and the address stays stable.
+     id    the hash, without the "#"
+     tab   a TABS id
+     axis  an AXES id ============================================================ */
+const HASH_ALIASES=[
+  {id:"range", tab:"bysite", axis:"log"},
+];
+
 /* ==== UI_TEXT — interface strings that are not data rows. ====================
-   rowCount   the filter bar's "how much am I looking at" line. {n} is the
-              number of figures the filters let through, {total} the number
-              registered in SITES. */
+   Filter-bar summary, assembled by updateFilterSummary() and joined with " · ":
+     showing    "{n} of {total}" counts the figures the filters let through
+     mtbOn / mtbOff        the MTB-only filter's state
+     rangesOff             printed only when ranges are hidden (on is the default)
+     tiersAll / tiersSome  the confidence filter's state; {list} is the letters
+   tabsLabel  the accessible name of the tab bar.
+   showNote / showAllNotes / hideAllNotes   the Sources tab's note folds. */
 const UI_TEXT={
-  rowCount:"Showing {n} of {total} figures",
+  showing:"Showing {n} of {total}",
+  mtbOn:"MTB only", mtbOff:"all studies",
+  rangesOff:"ranges hidden",
+  tiersAll:"all tiers", tiersSome:"tiers {list}",
+  tabsLabel:"Views",
+  showNote:"Show note",
+  showAllNotes:"Show all notes", hideAllNotes:"Hide all notes",
 };
 
 /* ==== LEGEND_KEY — the legend entries that explain a mark rather than a
    cohort or a tier. The cohort and tier entries are built from the registries
-   in buildLegendTop(); these two had no home and went unexplained.
-     kind    "hatch" = the striped reported-range swatch, "calc" = the italic flag
+   in buildLegendTop(); these had no home and went unexplained.
+     kind    "range" = the reported-range mark (a hatched bar on the Linear
+             axis, a line between two dots on Log — the swatch follows the
+             axis), "calc" = the italic flag
      label   the words that sit beside it — the mark never stands alone ======== */
 const LEGEND_KEY=[
-  {kind:"hatch", label:"Reported range, low to high"},
-  {kind:"calc",  label:"Claude-assisted calculation — see note"},
+  {kind:"range", label:"Reported range"},
+  {kind:"calc",  label:"Claude-assisted calculation"},
 ];
 
 /* ================== END OF DATA — everything below is logic ================== */
@@ -993,18 +1141,23 @@ const LEGEND_KEY=[
 const BAR_MAX_DOLLARS=650;      // right edge of the linear $ axis on "By Site" bars;
                                  // set just above the highest MTB-specific value (GMUG $617)
                                  // so bars use the full width without one outlier crushing the rest
-const RANGE_AXIS_MIN=1;         // log-scale floor; must be >0 or log() breaks
-const RANGE_AXIS_MAX=1200;      // just above the highest value in the dataset (Cable WI $1,107,
-                                 // referenced in a note but not plotted — see camba entry)
-const RANGE_DOT_R=6;            // strip-plot dot radius, px
-const RANGE_DOT_R_HOVER=8;      // dot radius on hover/focus, for touch/visual feedback
-const RANGE_ROW_H=34;           // vertical spacing between stacked dots in the same lane
-const RANGE_LANE_GAP=64;        // vertical gap between the "non-local" and "local" lanes
+const LOG_AXIS_MIN=2;           // left edge of the Log axis, $. Must be >0 or log() breaks. Set just under
+                                 // the lowest figure in the dataset ($3, the non-MTB local rows) so
+                                 // nothing sits on the edge and the axis does not waste its left side
+const LOG_AXIS_MAX=800;         // right edge of the Log axis, $. Just above the highest figure (GMUG $617);
+                                 // anything larger is clamped to the edge, never drawn off it
+const LOG_TICKS_WIDE=[5,10,25,50,100,250,500];   // gridlines + labels, $, from WIDE_MIN_PX up
+const LOG_TICKS_NARROW=[10,100,500];             // fewer on a phone: at ~170px of track the wide set
+                                                  // puts labels ~20px apart and they overprint
+const WIDE_MIN_PX=640;          // the one phone/desktop breakpoint the script needs to know about; it
+                                 // matches the 640px @media block. Picks the tick set and whether the
+                                 // filter bar starts open
 
 /* ── runtime state ───────────────────────────────────────────────────────── */
 let activeTab=TABS[0].id;
 let filterMtbOnly=true;
 let filterShowRanges=true;
+let axisMode=AXES[0].id;   // an AXES id; a deep link (HASH_ALIASES) can set it before first paint
 const filterTiers=Object.fromEntries(Object.keys(CONF_META).map(k=>[k,true]));
 
 /* ── small helpers ───────────────────────────────────────────────────────── */
@@ -1041,7 +1194,7 @@ function tierBadge(tier){
   const known=Object.prototype.hasOwnProperty.call(CONF_META,tier);
   const t=known?CONF_META[tier]:CONF_FALLBACK;
   const letter=known?String(tier).toUpperCase():"?";
-  return `<span class="tierbadge" style="background:${t.color}" title="${esc(t.label)}: ${esc(t.desc)}">${esc(letter)}</span>`;
+  return `<span class="tierbadge look-${esc(t.look)}" title="${esc(t.label)}: ${esc(t.desc)}">${esc(letter)}</span>`;
 }
 // Shared by the source table AND the exclusions list — both link the same way,
 // so the rule lives in one place. Prefers the archive snapshot: it does not rot,
@@ -1150,7 +1303,7 @@ function wireTipTarget(el, site, which){
    tooltip would stay up for the rest of the session — and being position:fixed,
    it would float over the page as you scrolled away from the bar that opened it. */
 document.addEventListener("click", e=>{
-  if(!(e.target.closest && e.target.closest(".barfill,.rangedot"))) hideTip();
+  if(!(e.target.closest && e.target.closest(".barfill,.logmark"))) hideTip();
 });
 window.addEventListener("scroll", hideTip, {passive:true});
 function siteTipHtml(s,which){
@@ -1164,131 +1317,121 @@ function siteTipHtml(s,which){
   return `<b>${esc(s.site)}</b> (${esc(s.st)}, ${s.yr})<br>${label}: <b>${fmtMoney(val)}${range}${UNIT_META[s.unit]}</b> ${tierBadge(s.conf)}${calc}${note}`;
 }
 
-/* ==== renderBySite() — paired local/non-local bars, one row per site. ==========
-   Linear $ axis, shared across all rows (BAR_MAX_DOLLARS). Bars are NOT unit-
-   normalized — each carries its own unit badge — by design; see the filter-bar
-   note in the markup for why forcing a common unit would misrepresent sources
-   that measure fundamentally different things (a day vs. a whole multi-day trip). */
+/* ==== renderBySite() — paired local/non-local marks, one row per site. ========
+   ONE chart, two scales (AXES). Linear draws bars from $0 to BAR_MAX_DOLLARS.
+   Log draws dots between LOG_AXIS_MIN and LOG_AXIS_MAX, with gridlines at every
+   tick and a ranged figure as a line between two dots. Either way each row keeps
+   its unit badge and nothing is unit-normalized — see the filter-bar note for why
+   forcing a common unit would misrepresent sources that measure fundamentally
+   different things (a day vs. a whole multi-day trip).
+   WHY DOTS AND NOT LOG-SCALED BARS: a bar's length is its value measured from a
+   baseline, and on a log axis there is no zero — the baseline is wherever the
+   axis happens to start, so the bar length means nothing. A dot only claims a
+   position, which is all a log axis can honestly give. =========================== */
 function renderBySite(container){
   const rows=visibleSites();
-  let html=`<div id="siteRows">`;
-  rows.forEach(s=>{
-    html+=`<div class="siterow">
-      <div class="siterow-head">
-        <span class="siterow-name">${esc(s.site)} <span class="siterow-meta">(${esc(s.st)}, ${s.yr})</span></span>
-        ${tierBadge(s.conf)}
-      </div>
-      <div class="bargroup">`;
-    html+=barLine("Non-local",s,"nl","nonlocal");
-    html+=barLine("Local",s,"lo","local");
-    html+=`</div></div>`;
-  });
-  html+=`</div>`;
+  const log=axisMode==="log";
+  const axis=AXES.find(a=>a.id===axisMode)||AXES[0];
+  const ticks=log ? logTicks() : [];
+  let html=axisControlHtml()+`<p class="axisnote" id="axisNote">${esc(axis.note)}</p>`;
   if(rows.length===0){
-    html=`<p class="nodata">No sites match the current filters.</p>`;
+    html+=`<p class="nodata">No sites match the current filters.</p>`;
+  } else {
+    // --grid paints the Log gridlines into every track from ONE declaration here,
+    // rather than a few hundred absolutely-positioned elements. Linear has none.
+    const grid=ticks.map(t=>`linear-gradient(var(--line),var(--line)) ${logPct(t)}% 0/1px 100% no-repeat`).join(",");
+    html+=`<div class="barlist${log?" islog":""}"${log?` style="--grid:${grid}"`:""}>`;
+    if(log){
+      html+=`<div class="axisrow" aria-hidden="true"><span class="axis-l"></span><span class="axis-track">`+
+        ticks.map(t=>`<span class="axis-tick" style="left:${logPct(t)}%">$${t}</span>`).join("")+
+        `</span><span class="axis-r"></span></div>`;
+    }
+    html+=`<div id="siteRows">`;
+    rows.forEach(s=>{
+      html+=`<div class="siterow">
+        <div class="siterow-head">
+          <span class="siterow-name">${esc(s.site)} <span class="siterow-meta">(${esc(s.st)}, ${s.yr})</span></span>
+          ${tierBadge(s.conf)}
+        </div>
+        <div class="bargroup">`;
+      html+=barLine("Non-local",s,"nl","nonlocal");
+      html+=barLine("Local",s,"lo","local");
+      html+=`</div></div>`;
+    });
+    html+=`</div></div>`;
   }
   container.innerHTML=html;
+  container.querySelectorAll(".axisbtn").forEach(b=>{
+    b.addEventListener("click",()=>setAxis(b.dataset.axis));
+  });
   wireBarEvents(container);
+}
+// The Linear / Log switch. It lives in the panel rather than in the filter bar:
+// the filter bar folds shut on a phone, and the scale is how you READ the chart,
+// not which rows are in it. Rebuilt on every render, so its handlers are too.
+function axisControlHtml(){
+  return `<div class="axiscontrol" role="group" aria-label="Scale">`+
+    `<span class="axiscontrol-label">Scale</span>`+
+    AXES.map(a=>`<button type="button" class="axisbtn" data-axis="${esc(a.id)}" aria-pressed="${a.id===axisMode}">${esc(a.label)}</button>`).join("")+
+  `</div>`;
+}
+// $ -> percent along a Log track, clamped so an out-of-range figure sits ON the
+// edge instead of being drawn outside its own track.
+function logPct(v){
+  const lo=Math.log10(LOG_AXIS_MIN), hi=Math.log10(LOG_AXIS_MAX);
+  const t=(Math.log10(Math.max(v,LOG_AXIS_MIN))-lo)/(hi-lo);
+  return Math.max(0,Math.min(1,t))*100;
+}
+function logTicks(){
+  return window.innerWidth>=WIDE_MIN_PX ? LOG_TICKS_WIDE : LOG_TICKS_NARROW;
 }
 function barLine(label,s,key,cls){
   const val=s[key], hi=s[key+"Hi"];
   if(val==null) return `<div class="barline"><span class="barlabel">${esc(label)}</span><span class="nodata">not reported</span></div>`;
   const showHi = filterShowRanges && hi!=null;
-  const pxLo=Math.min(100, (val/BAR_MAX_DOLLARS)*100);
-  const pxHi=showHi? Math.min(100,(hi/BAR_MAX_DOLLARS)*100) : pxLo;
   const at=`data-site="${esc(s.id)}" data-which="${key}"`;
-  // A reported range renders as TWO segments: a solid bar out to the LOW bound,
-  // then a hatched extension to the high bound. Drawing only the high bound (the
-  // original bug) made GMUG's $329–$617 read as a flat "$617" — the longest bar
-  // in the tool — with nothing on screen marking where the range actually starts.
-  const fills = showHi
-    ? `<span class="barfill ${cls} rangelow" ${at} style="width:${pxLo}%"></span>` +
-      `<span class="barfill range ${cls==='local'?'localrange':''} rangeext" ${at} style="left:${pxLo}%;width:${Math.max(0,pxHi-pxLo)}%"></span>`
-    : `<span class="barfill ${cls}" ${at} style="width:${pxLo}%"></span>`;
+  const log=axisMode==="log";
+  let fills;
+  if(log){
+    // A reported range is a line between two dots; the high end is the smaller,
+    // paler dot, exactly as the old Range tab drew it.
+    const pLo=logPct(val), pHi=showHi?logPct(hi):pLo;
+    fills = (showHi ? `<span class="logrange ${cls}" style="left:${pLo}%;width:${Math.max(0,pHi-pLo)}%"></span>` : "") +
+      `<span class="logmark ${cls}" ${at} style="left:${pLo}%"></span>` +
+      (showHi ? `<span class="logmark ${cls} hi" ${at} style="left:${pHi}%"></span>` : "");
+  } else {
+    const pxLo=Math.min(100, (val/BAR_MAX_DOLLARS)*100);
+    const pxHi=showHi? Math.min(100,(hi/BAR_MAX_DOLLARS)*100) : pxLo;
+    // A reported range renders as TWO segments: a solid bar out to the LOW bound,
+    // then a hatched extension to the high bound. Drawing only the high bound (the
+    // original bug) made GMUG's $329–$617 read as a flat "$617" — the longest bar
+    // in the tool — with nothing on screen marking where the range actually starts.
+    fills = showHi
+      ? `<span class="barfill ${cls} rangelow" ${at} style="width:${pxLo}%"></span>` +
+        `<span class="barfill range ${cls==='local'?'localrange':''} rangeext" ${at} style="left:${pxLo}%;width:${Math.max(0,pxHi-pxLo)}%"></span>`
+      : `<span class="barfill ${cls}" ${at} style="width:${pxLo}%"></span>`;
+  }
   const displayVal = fmtValue(s,key,showHi);
   return `<div class="barline">
     <span class="barlabel">${esc(label)}</span>
-    <span class="bartrack">${fills}</span>
+    <span class="bartrack${log?" logtrack":""}">${fills}</span>
     <span class="barval">${displayVal}<span class="valrow"><span class="unitbadge">${UNIT_META[s.unit]}</span>${s.calc?'<span class="calcflag" title="Claude-assisted calculation — see tooltip">calc</span>':''}</span></span>
   </div>`;
 }
 function wireBarEvents(container){
-  container.querySelectorAll(".barfill").forEach(el=>{
+  container.querySelectorAll(".barfill,.logmark").forEach(el=>{
     wireTipTarget(el, SITES.find(x=>x.id===el.dataset.site), el.dataset.which);
   });
 }
-
-/* ==== renderRange() — log-scale strip plot of every value across all sites. ====
-   Two lanes (non-local / local), each site's value(s) plotted as a dot on a
-   shared log axis. Log scale is used deliberately — reported values span
-   roughly $3 to $600+ (over two orders of magnitude) — and is labeled as such
-   so nobody mistakes dot spacing for a linear read. */
-function renderRange(container){
-  const rows=visibleSites();
-  // W is measured from the actual panel width, not a fixed constant, so the
-  // viewBox maps 1:1 to on-screen pixels at every size — text and dots stay
-  // legible on a phone instead of shrinking with a wide fixed-width viewBox
-  // (that was the original bug: a 900-unit viewBox squeezed into a ~380px
-  // phone screen forced horizontal scrolling and shrank every label).
-  const W=Math.max(300, container.clientWidth || 340);
-  const PADL = W<420 ? 44 : 54;   // narrower left gutter on small screens
-  const PADR = 14, PADT = 18;
-  const nlVals=[], loVals=[];
-  rows.forEach(s=>{
-    if(s.nl!=null) nlVals.push(s);
-    if(s.lo!=null) loVals.push(s);
-  });
-  const lanesH = PADT + RANGE_ROW_H*Math.max(nlVals.length,1) + RANGE_LANE_GAP + RANGE_ROW_H*Math.max(loVals.length,1) + 40;
-  const xScale=v=>{
-    const lo=Math.log10(RANGE_AXIS_MIN), hi=Math.log10(RANGE_AXIS_MAX);
-    const t=(Math.log10(Math.max(v,RANGE_AXIS_MIN))-lo)/(hi-lo);
-    return PADL + t*(W-PADL-PADR);
-  };
-  // axis ticks at clean log steps — thinner set on narrow screens so labels
-  // don't collide (viewBox now equals real screen pixels, so crowding is a
-  // real risk here in a way it wasn't with the old fixed-900 viewBox)
-  const ticks = W<420 ? [1,10,100,1000] : [1,10,50,100,250,500,1000];
-  let svg=`<svg class="rangesvg" viewBox="0 0 ${W} ${lanesH}" width="100%" role="img" aria-label="Distribution of reported daily, nightly, per-trip, and per-visit spending across studies">`;
-  // gridlines + tick labels
-  ticks.forEach(t=>{
-    const x=xScale(t);
-    svg+=`<line x1="${x}" y1="${PADT}" x2="${x}" y2="${lanesH-24}" stroke="var(--line)" stroke-width="1"/>`;
-    svg+=`<text x="${x}" y="${lanesH-8}" font-size="12" fill="var(--ink-soft)" text-anchor="middle">$${t}</text>`;
-  });
-  // lane labels
-  svg+=`<text x="${PADL}" y="${PADT-4}" font-size="12" font-weight="700" fill="var(--nonlocal)">NON-LOCAL</text>`;
-  const loLaneY0=PADT+RANGE_ROW_H*Math.max(nlVals.length,1)+RANGE_LANE_GAP;
-  svg+=`<text x="${PADL}" y="${loLaneY0-6}" font-size="12" font-weight="700" fill="var(--local)">LOCAL</text>`;
-  // dots — non-local lane
-  nlVals.forEach((s,i)=>{
-    const y=PADT+14+i*RANGE_ROW_H;
-    svg+=rangeDotSvg(s,"nl",s.nl,xScale(s.nl),y,"var(--nonlocal)");
-    if(filterShowRanges && s.nlHi!=null){
-      svg+=`<line x1="${xScale(s.nl)}" y1="${y}" x2="${xScale(s.nlHi)}" y2="${y}" stroke="var(--nonlocal)" stroke-width="2" opacity=".55"/>`;
-      svg+=rangeDotSvg(s,"nl",s.nlHi,xScale(s.nlHi),y,"var(--nonlocal)",true);
-    }
-  });
-  // dots — local lane
-  loVals.forEach((s,i)=>{
-    const y=loLaneY0+14+i*RANGE_ROW_H;
-    svg+=rangeDotSvg(s,"lo",s.lo,xScale(s.lo),y,"var(--local)");
-    if(filterShowRanges && s.loHi!=null){
-      svg+=`<line x1="${xScale(s.lo)}" y1="${y}" x2="${xScale(s.loHi)}" y2="${y}" stroke="var(--local)" stroke-width="2" opacity=".55"/>`;
-      svg+=rangeDotSvg(s,"lo",s.loHi,xScale(s.loHi),y,"var(--local)",true);
-    }
-  });
-  svg+=`</svg>`;
-  container.innerHTML = rows.length
-    ? `<div class="rangewrap">${svg}<p class="rangecap">Log-scale axis — values span roughly $3 to over $600, more than two orders of magnitude. Each dot is one reported figure exactly as its source stated it (day, night, trip, or visit — hover or tap for which). A short line marks a reported range.</p></div>`
-    : `<p class="nodata">No sites match the current filters.</p>`;
-  container.querySelectorAll(".rangedot").forEach(el=>{
-    wireTipTarget(el, SITES.find(x=>x.id===el.dataset.site), el.dataset.which);
-  });
-}
-function rangeDotSvg(s,which,val,x,y,color,isHiEnd){
-  const r = isHiEnd ? RANGE_DOT_R-1 : RANGE_DOT_R;
-  const op = isHiEnd ? 0.65 : 1;
-  return `<circle class="rangedot" data-site="${esc(s.id)}" data-which="${which}" cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="${op}" stroke="var(--card)" stroke-width="1.5"><title>${esc(s.site)}: ${fmtMoney(val)}${UNIT_META[s.unit]}</title></circle>`;
+// One path in and out of an axis, shared by the buttons and by a deep link, for
+// the same reason as setActiveTab(): the state, the share href and the legend key
+// (its range swatch follows the axis) must all move together.
+function setAxis(id){
+  if(!AXES.some(a=>a.id===id) || id===axisMode) return;
+  axisMode=id;
+  buildLegendTop();
+  syncShareHref();
+  if(activeTab==="bysite") renderActiveTab();
 }
 
 /* ==== renderSources() — methodology, tier legend, full citation table,
@@ -1309,6 +1452,15 @@ function srcValueCell(s,key,label){
   if(v==null) return `<td ${at}><span class="nodata">not reported</span></td>`;
   const calc=s.calc?' <span class="calcflag" title="Claude-assisted calculation — see the note">calc</span>':'';
   return `<td class="srcval" ${at}>${v}<span class="unitbadge">${UNIT_META[s.unit]}</span>${calc}</td>`;
+}
+// A study's note, folded. The notes are the longest text in the tool (one runs to
+// ~250 words) and a phone user scrolling for a citation has to wade through every
+// one of them. They are still on the page, in the DOM, one tap away, and Chrome
+// and Safari open a closed <details> to show a find-in-page match.
+function noteCell(s){
+  return s.note
+    ? `<details class="notedetails"><summary>${esc(UI_TEXT.showNote)}</summary><p>${esc(s.note)}</p></details>`
+    : "";
 }
 function renderSources(container){
   let tierRows="";
@@ -1336,7 +1488,7 @@ function renderSources(container){
       ${cell("lo","Local")}
       <td data-label="Confidence">${tierBadge(s.conf)}</td>
       <td data-label="Source">${srcCell(s)}</td>
-      <td data-label="Note">${esc(s.note||"")}</td>
+      <td data-label="Note">${noteCell(s)}</td>
     </tr>`;
   });
   let srcRows="";
@@ -1351,16 +1503,23 @@ function renderSources(container){
       ${srcValueCell(s,"lo","Local")}
       <td data-label="Confidence">${tierBadge(s.conf)}</td>
       <td data-label="Source">${srcCell(s)}</td>
-      <td data-label="Note">${esc(s.note||"")}</td>
+      <td data-label="Note">${noteCell(s)}</td>
     </tr>`;
   });
   container.innerHTML=`
+    <div class="srcnote">
+      <h3>Why units aren't normalized</h3>
+      <p style="margin:0">Every figure is shown exactly as its source reported it — per day, per night, per trip, or per visit — rather than converted to one common unit. Forcing everything into "per day" would require assuming an average trip length for studies that didn't report one, which would quietly manufacture precision the sources don't have. Where a conversion IS shown (marked <span class="calcflag">calc</span>), the arithmetic is stated in the note, using only numbers the source itself printed.</p>
+    </div>
     <div class="srcnote">
       <h3>Confidence tiers — how well-sourced each figure is</h3>
       <div style="display:flex;flex-direction:column;gap:6px">${tierRows}</div>
     </div>
     <div class="srcnote">
-      <h3>Source table <span class="srccount">— showing ${srcSites.length} of ${SITES.length} studies</span></h3>
+      <div class="srchead">
+        <h3>Source table <span class="srccount">— showing ${srcSites.length} of ${SITES.length} studies</span></h3>
+        <button type="button" class="notesall" id="notesAll" aria-pressed="false">${esc(UI_TEXT.showAllNotes)}</button>
+      </div>
       <div style="overflow-x:auto"><table class="srctable">
         <tr>
           <th>Site</th>
@@ -1371,17 +1530,9 @@ function renderSources(container){
         ${srcRows}
       </table></div>
     </div>
-    <div class="srcnote">
-      <h3>Why units aren't normalized</h3>
-      <p style="margin:0">Every figure is shown exactly as its source reported it — per day, per night, per trip, or per visit — rather than converted to one common unit. Forcing everything into "per day" would require assuming an average trip length for studies that didn't report one, which would quietly manufacture precision the sources don't have. Where a conversion IS shown (marked <span class="calcflag">calc</span>), the arithmetic is stated in the note, using only numbers the source itself printed.</p>
-    </div>
-    <div class="srcnote">
-      <h3>Excluded — no usable day/trip figure found</h3>
-      <ul class="excludelist">${exclusionRows}</ul>
-    </div>
-    <div class="srcnote">
-      <h3>Held out of the charts — reported in another currency <span class="srccount">— ${FOREIGN_SITES.length} ${FOREIGN_SITES.length===1?"study":"studies"}</span></h3>
-      <p style="margin:0 0 10px">Read, tiered and recorded, but not plotted. Both charts share one dollar
+    <details class="srcnote srcfold">
+      <summary>Held out of the charts — reported in another currency <span class="srccount">— ${FOREIGN_SITES.length} ${FOREIGN_SITES.length===1?"study":"studies"}</span></summary>
+      <p style="margin:0 0 10px">Read, tiered and recorded, but not plotted. The chart shares one dollar
       axis, and a figure in another currency drawn on it would read as directly comparable when it is not.
       These print in the currency their source used, compared to nothing. A normalized view needs an exchange
       rate, and a rate is only honest if the screen says which one and as of when — so that is a deliberate
@@ -1395,8 +1546,20 @@ function renderSources(container){
         </tr>
         ${foreignRows}
       </table></div>
-    </div>
+    </details>
+    <details class="srcnote srcfold">
+      <summary>Excluded — no usable day/trip figure found <span class="srccount">— ${EXCLUSIONS.length} ${EXCLUSIONS.length===1?"study":"studies"}</span></summary>
+      <ul class="excludelist">${exclusionRows}</ul>
+    </details>
   `;
+  // "Show all notes" / "Hide all notes": opens or closes every note at once.
+  const all=document.getElementById("notesAll");
+  all.addEventListener("click",()=>{
+    const open=all.getAttribute("aria-pressed")!=="true";
+    container.querySelectorAll(".notedetails").forEach(d=>{ d.open=open; });
+    all.setAttribute("aria-pressed",String(open));
+    all.textContent=open ? UI_TEXT.hideAllNotes : UI_TEXT.showAllNotes;
+  });
 }
 
 /* ── tab wiring, filter wiring, theme, share, deep links, init ───────────── */
@@ -1468,44 +1631,76 @@ function buildTierFilters(){
   });
 }
 function buildLegendTop(){
-  let html="";
-  html+=`<span class="item"><span class="swatch" style="background:var(--nonlocal)"></span>Non-local / out-of-town</span>`;
-  html+=`<span class="item"><span class="swatch" style="background:var(--local)"></span>Local / resident</span>`;
-  // The three tier badges used to sit bare in the legend, so "Medium" and "Low"
-  // read as adjectives with no noun — medium WHAT? This label names the axis once
-  // for the group rather than repeating it on each badge.
-  html+=`<span class="item legend-label">How well-sourced the figure is:</span>`;
-  Object.keys(CONF_META).forEach(k=>{
-    html+=`<span class="item">${tierBadge(k)} ${esc(CONF_META[k].label)}</span>`;
-  });
+  // Row one is what the MARKS mean; row two is what the confidence BADGES mean.
+  // The second row keeps its own label because a badge with no noun beside it is
+  // "medium WHAT?" — and it has to live out here, not only in the filter bar,
+  // because the filter bar folds shut on a phone and takes its tier chips along.
+  let marks="";
+  marks+=`<span class="item"><span class="swatch" style="background:var(--nonlocal)"></span>Non-local / out-of-town</span>`;
+  marks+=`<span class="item"><span class="swatch" style="background:var(--local)"></span>Local / resident</span>`;
   // The marks that are neither a cohort nor a tier — see LEGEND_KEY.
   LEGEND_KEY.forEach(m=>{
-    const mark = m.kind==="hatch" ? `<span class="swatch hatch"></span>`
+    const mark = m.kind==="range" ? `<span class="swatch ${axisMode==="log"?"rangeline":"hatch"}"></span>`
                : m.kind==="calc"  ? `<span class="calcflag">calc</span>`
                : "";
-    html+=`<span class="item">${mark}${esc(m.label)}</span>`;
+    marks+=`<span class="item">${mark}${esc(m.label)}</span>`;
   });
-  document.getElementById("legendTop").innerHTML=html;
+  let tiers=`<span class="item legend-label">Confidence:</span>`;
+  Object.keys(CONF_META).forEach(k=>{
+    tiers+=`<span class="item">${tierBadge(k)} ${esc(CONF_META[k].label)}</span>`;
+  });
+  document.getElementById("legendTop").innerHTML=
+    `<div class="legendrow">${marks}</div><div class="legendrow">${tiers}</div>`;
 }
-// "Showing 15 of 21 figures". Same count the charts and the source table draw
-// from, so the line cannot disagree with the screen.
-function updateRowCount(){
-  document.getElementById("rowCount").textContent =
-    UI_TEXT.rowCount.replace("{n}",visibleSites().length).replace("{total}",SITES.length);
+// The one-line state of the filters, printed under the "Filters" button so it is
+// visible even while the controls are folded away: "Showing 15 of 21 · MTB only ·
+// all tiers". The count is the same one the charts and the source table draw
+// from, so the line cannot disagree with the screen. Only a NON-default range
+// setting is mentioned — "ranges shown" would be noise on every view.
+function updateFilterSummary(){
+  const on=Object.keys(filterTiers).filter(k=>filterTiers[k]);
+  const parts=[
+    UI_TEXT.showing.replace("{n}",visibleSites().length).replace("{total}",SITES.length),
+    filterMtbOnly ? UI_TEXT.mtbOn : UI_TEXT.mtbOff,
+  ];
+  const tab=TABS.find(t=>t.id===activeTab);
+  if(tab && tab.ranges && !filterShowRanges) parts.push(UI_TEXT.rangesOff);
+  parts.push(on.length===Object.keys(filterTiers).length
+    ? UI_TEXT.tiersAll
+    : UI_TEXT.tiersSome.replace("{list}", on.map(k=>k.toUpperCase()).join(", ")||"none"));
+  document.getElementById("filterSummary").textContent=parts.join(" · ");
 }
 function renderActiveTab(){
   const tab=TABS.find(t=>t.id===activeTab);
   const panel=document.getElementById("p-"+tab.id);
   window[tab.render](panel);
-  updateRowCount();
+  updateFilterSummary();
 }
 function buildTabsAndPanels(){
   const bar=document.getElementById("tabbar");
   const panels=document.getElementById("panels");
-  bar.innerHTML = TABS.map(t=>`<button class="tabbtn" id="tabbtn-${t.id}" role="tab" aria-pressed="${t.id===activeTab}">${esc(t.label)}</button>`).join("");
-  panels.innerHTML = TABS.map(t=>`<div class="panel" id="p-${t.id}" data-active="${t.id===activeTab}"></div>`).join("");
-  TABS.forEach(t=>{
-    document.getElementById("tabbtn-"+t.id).addEventListener("click",()=>setActiveTab(t.id));
+  bar.setAttribute("aria-label",UI_TEXT.tabsLabel);
+  // The WAI-ARIA tabs pattern, whole: role=tab with aria-selected (not
+  // aria-pressed, which is for toggle buttons and which tabs used to carry),
+  // aria-controls pointing at a role=tabpanel, a roving tabindex so Tab moves
+  // past the bar instead of through every tab, and the arrow keys below. These
+  // pieces only work together — half of them is worse than none.
+  bar.innerHTML = TABS.map(t=>`<button type="button" class="tabbtn" id="tabbtn-${t.id}" role="tab" aria-selected="${t.id===activeTab}" aria-controls="p-${t.id}" tabindex="${t.id===activeTab?0:-1}">${esc(t.label)}</button>`).join("");
+  panels.innerHTML = TABS.map(t=>`<div class="panel" id="p-${t.id}" role="tabpanel" aria-labelledby="tabbtn-${t.id}" data-active="${t.id===activeTab}"></div>`).join("");
+  TABS.forEach((t,i)=>{
+    const btn=document.getElementById("tabbtn-"+t.id);
+    btn.addEventListener("click",()=>setActiveTab(t.id));
+    btn.addEventListener("keydown",e=>{
+      const n=TABS.length;
+      const to = e.key==="ArrowRight" ? (i+1)%n
+               : e.key==="ArrowLeft"  ? (i-1+n)%n
+               : e.key==="Home" ? 0
+               : e.key==="End"  ? n-1 : null;
+      if(to===null) return;
+      e.preventDefault();
+      setActiveTab(TABS[to].id);
+      document.getElementById("tabbtn-"+TABS[to].id).focus();
+    });
   });
 }
 // One path in and out of a tab, shared by the buttons and by a deep link, so a
@@ -1516,7 +1711,9 @@ function setActiveTab(id){
   if(!t || t.id===activeTab) return;
   activeTab=t.id;
   TABS.forEach(o=>{
-    document.getElementById("tabbtn-"+o.id).setAttribute("aria-pressed", o.id===t.id);
+    const b=document.getElementById("tabbtn-"+o.id);
+    b.setAttribute("aria-selected", o.id===t.id);
+    b.setAttribute("tabindex", o.id===t.id ? "0" : "-1");
     document.getElementById("p-"+o.id).setAttribute("data-active", o.id===t.id);
   });
   setTabControls(t);
@@ -1531,12 +1728,23 @@ function setTabControls(tab){
   document.getElementById("rangesControl").style.display = tab.ranges ? "flex" : "none";
   document.getElementById("filterNote").style.display = tab.chart ? "" : "none";
 }
+// Open or fold the filter controls. The button is a disclosure: aria-expanded
+// says which, aria-controls says what it governs.
+function setFilterOpen(open){
+  document.getElementById("filterToggle").setAttribute("aria-expanded", String(open));
+  document.getElementById("filterBody").hidden=!open;
+}
 function wireFilters(){
   document.getElementById("mtbOnly").addEventListener("change",e=>{
     filterMtbOnly=e.target.checked; renderActiveTab();
   });
   document.getElementById("showRanges").addEventListener("change",e=>{
     filterShowRanges=e.target.checked; renderActiveTab();
+  });
+  const tog=document.getElementById("filterToggle");
+  tog.addEventListener("click",()=>{
+    document.getElementById("filterbar").classList.add("touched");
+    setFilterOpen(tog.getAttribute("aria-expanded")!=="true");
   });
 }
 /* ── Share ────────────────────────────────────────────────────────────────
@@ -1560,6 +1768,11 @@ const SHARE_FLASH_MS=1900;      // how long the status pill stays up after a cop
 // first tab is the default view and carries NO hash — a clean URL is a better
 // thing to paste than one ending in "#bysite".
 function shareUrl(){
+  // A view that has its own alias (By Site on the Log axis is "#range") shares
+  // as that alias, so the address a person copies is the one that was always
+  // used for it. See HASH_ALIASES.
+  const alias=HASH_ALIASES.find(a=>a.tab===activeTab && a.axis===axisMode);
+  if(alias) return SHARE_URL+"#"+alias.id;
   return SHARE_URL + (activeTab===TABS[0].id ? "" : "#"+activeTab);
 }
 function syncShareHref(){
@@ -1627,13 +1840,22 @@ function wireShare(){
    is exactly what a Pinkbike embed gets, since no message from that page will
    ever clear PMR_ORIGINS.
    ========================================================================= */
-function tabFromHash(hash){
+// A hash names a VIEW: a tab, and for By Site a scale. Returns null for anything
+// unknown, which is not an error — it leaves the default view.
+function viewFromHash(hash){
   const id=String(hash||"").replace(/^#/,"").trim().toLowerCase();
-  return TABS.some(t=>t.id===id) ? id : null;
+  const alias=HASH_ALIASES.find(a=>a.id===id);
+  if(alias) return {tab:alias.tab, axis:alias.axis};
+  if(TABS.some(t=>t.id===id)) return {tab:id, axis:id===TABS[0].id ? AXES[0].id : null};
+  return null;
 }
 function applyHash(hash){
-  const id=tabFromHash(hash);
-  if(id) setActiveTab(id);
+  const v=viewFromHash(hash);
+  if(!v) return;
+  // Axis first: if By Site is already showing it re-renders there, and if not,
+  // setActiveTab below renders it once with the right scale already set.
+  if(v.axis) setAxis(v.axis);
+  setActiveTab(v.tab);
 }
 window.addEventListener("hashchange",()=>applyHash(location.hash));
 window.addEventListener("message",e=>{
@@ -1642,22 +1864,32 @@ window.addEventListener("message",e=>{
   applyHash(e.data.hash);
 });
 
-// Redraw the Range tab's SVG on resize/orientation-change, debounced —
-// its viewBox is measured from the container's actual pixel width (see
-// renderRange), so a stale render after a resize would misalign text and
-// dots against the new width rather than just looking generically "off".
+// The Log axis picks its tick set from the viewport width (see logTicks), so it
+// is redrawn when the width crosses the phone/desktop breakpoint — and ONLY then.
+// A phone fires "resize" every time its address bar slides away, and redrawing
+// the panel on each of those would be pure churn.
 const RESIZE_DEBOUNCE_MS=150;
 let resizeTimer=null;
+let lastWide=window.innerWidth>=WIDE_MIN_PX;
 window.addEventListener("resize",()=>{
   clearTimeout(resizeTimer);
-  resizeTimer=setTimeout(()=>{ if(activeTab==="range") renderActiveTab(); }, RESIZE_DEBOUNCE_MS);
+  resizeTimer=setTimeout(()=>{
+    const wide=window.innerWidth>=WIDE_MIN_PX;
+    if(wide!==lastWide){
+      lastWide=wide;
+      if(activeTab==="bysite" && axisMode==="log") renderActiveTab();
+    }
+  }, RESIZE_DEBOUNCE_MS);
 });
 
 function init(){
   // Resolve a deep link BEFORE anything is built, so the requested tab paints
   // once rather than rendering the default and then immediately replacing it.
-  const hashTab=tabFromHash(location.hash);
-  if(hashTab) activeTab=hashTab;
+  const view=viewFromHash(location.hash);
+  if(view){
+    activeTab=view.tab;
+    if(view.axis) axisMode=view.axis;
+  }
   // The href is already in the markup so the link works with no script at all;
   // this makes the data block the single source of truth once one is running.
   document.querySelector(".pmr-link").setAttribute("href", PMR_HOME_URL);
@@ -1668,6 +1900,8 @@ function init(){
   buildTabsAndPanels();
   setTabControls(TABS.find(t=>t.id===activeTab));
   wireFilters();
+  // Open on a screen with room for the controls, shut on a phone — see .filterbar.
+  setFilterOpen(window.matchMedia("(min-width:"+WIDE_MIN_PX+"px)").matches);
   wireShare();
   renderActiveTab();
 }
