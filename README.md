@@ -37,6 +37,7 @@ smoothing over the three things that make them hard to compare:
 | **Sources** tab | Why units aren't normalized (folded shut by default; it prints open), tier definitions (also folded; each of the three tiers is a switch that shows or hides its studies, the same switch as the chips in Filters), the citation table (each note folds behind *Show note*; *Show all notes* opens them), then two folded sections: studies held out for currency, and deliberate exclusions. Every study also has **The story** chevron: a short piece of background on the *place* (Anniston gets three paragraphs, so does Bentonville). It is background written from public sources, not a sourced figure, and is labeled as such |
 | **Theme switch** (top right) | Four palettes: **Daylight** (cool white, orange/blue — the most colorblind-safe; the default), **Ledger** (cream), **Neon** (1990s blacklight) and **Dusk** (warm dark, low glare). Swatches only on a phone, names from 760px up. Remembered per browser; the tool works fine if that storage is blocked |
 | **Share** (top right) | Copies or hands off the **PMR** URL, with the tab you are on appended |
+| **Print** (top right, printer icon) | Opens the browser's print dialog, which is also *Save as PDF*. Separate from Share. Notes are opened and the Range chart is resized for the page automatically; see *Printing and PDF* below. On a 320px phone the top bar wraps to two rows to fit it |
 | **← PMR** (top left) | Back to the site. `target="_top"`, so it escapes the embed |
 
 Hover or tap any bar or dot for the full citation and caveat.

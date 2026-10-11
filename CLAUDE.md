@@ -48,7 +48,7 @@ permission policy and the postMessage bridge follows from that.
   pre-paint theme shim ...... the ONLY logic outside the main script; see below
   <style>  theme palettes (default FIRST, and why), then components
 <body>
-  utility bar ............... PMR home link · theme switch · share
+  utility bar ............... PMR home link · theme switch · share · print
   masthead, tab bar, filter bar, panels — mostly empty shells that JS fills
   <script>
     ==== one contiguous DATA block ====
@@ -228,6 +228,7 @@ tidy up reintroduces the bug.
   - `.srctable` is a **grid on `<tr>`** in print (five cells, note full-width beneath). It needs the real `<thead>`, which is also what makes the header repeat per page. On screen the header being a `<thead>` means `thead` — not `tr:first-child` — is what hides it on a phone.
   - Closed `<details>` print as nothing. `printPrepare()` opens them and `printRestore()` restores the *exact* prior state; the Range SVG is redrawn at `PRINT_RANGE_W` and put back. Safari fires only the `matchMedia("print")` change, so both listeners stay.
   - **Tier switches share one function.** The chips in Filters and the rows in the Sources tab's Confidence-tiers fold both call `toggleTier()`, which flips `filterTiers` and re-syncs every `button[data-tier]`. Do not give either its own handler. Toggling re-renders the whole Sources tab, so `renderSources()` records which top-level folds were open and reopens them; without that the fold shuts under the reader's finger the moment they toggle a tier.
+  - **The Print button is a `<button class="share-btn print-btn">`, and `.utilbar` wraps.** At 320px the home link, four swatches and two round buttons are ~33px wider than the bar; wrapping drops the right-hand group to its own row there and nowhere wider. Do not shrink the swatches below 40px to avoid the wrap, and do not remove `flex-wrap`. `window.print()` is wrapped in `try/catch` because a frame whose embedder forbids dialogs (a sandbox without `allow-modals`) does nothing and says nothing.
   - The tap-area `::after` on `.axisbtn` / `.tierbtn` is what lets the buttons be 30px to look at and 40px to touch. `.tierfilter` row-gap is 10px so wrapped rows' tap areas tile rather than overlap. Print hides the `::after`.
 
 ## Iframe consequences
