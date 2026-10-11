@@ -20,7 +20,7 @@
     · BASE + LAYOUT ............... body, utility bar, masthead, wrap, tab nav
     · CHART ELEMENTS .............. bars, dots, unit badges, tooltip, legend
     · CONTROLS .................... MTB-only toggle, reported-ranges toggle,
-                                     theme switch, share button
+                                     theme switch, share button, print button
     · PRINT / SAVE AS PDF ......... last block in <style>, all inside @media print:
                                      white-paper palettes per theme, hidden
                                      controls, page breaks, source-table grid
@@ -380,8 +380,8 @@ a{color:var(--accent)}
    Pinkbike articles. That is why the home link carries target="_top". Without
    it the whole site loads INSIDE the embed, a frame within a frame. This has
    bitten before; do not remove it. ──────────────────────────────────────────── */
-.utilbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 0 6px}
-.util-right{display:flex;align-items:center;gap:8px;flex:none}
+.utilbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:2px 10px;padding:0 0 6px}
+.util-right{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto}
 .pmr-link{
   display:inline-flex;align-items:center;gap:5px;flex:none;
   min-height:40px;padding:2px 2px;border-radius:6px;
@@ -424,11 +424,15 @@ a{color:var(--accent)}
    a bright one. */
 .themeswatch{width:18px;height:18px;border-radius:4px;flex:none;border:1px solid #00000033}
 
-/* ── Share — see wireShare() for why this is an <a> and not a <button> ────── */
+/* ── Share — see wireShare() for why this is an <a> and not a <button> ──────
+   Print is a real <button> (it does something on THIS page and goes nowhere), and
+   borrows .share-btn so the two read as one pair. .utilbar wraps: at 320px the home
+   link, four theme swatches and two round buttons are ~33px wider than the bar, so
+   the right-hand group drops to its own row there and nowhere wider. ─────────── */
 .share-wrap{position:relative;display:inline-flex;flex:none}
 .share-btn{
   display:inline-flex;align-items:center;justify-content:center;
-  width:40px;height:40px;flex:none;
+  width:40px;height:40px;flex:none;padding:0;font:inherit;appearance:none;
   background:var(--card);border:1px solid var(--line);border-radius:999px;
   color:var(--ink-soft);cursor:pointer;text-decoration:none;
   transition:color .2s,border-color .2s;
@@ -1059,6 +1063,13 @@ footer a:hover{text-decoration-thickness:2px}
           <span class="sr-only">Share this tool</span>
         </a>
       </span>
+      <!-- lucide "printer". A <button>, not a link: it prints THIS page in whatever
+           state it is in. wirePrint() calls window.print(); printPrepare() (the
+           beforeprint handler) opens the notes and sizes the Range chart. -->
+      <button type="button" class="share-btn print-btn" id="printBtn" title="Print or save as PDF">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+        <span class="sr-only">Print or save as PDF</span>
+      </button>
     </div>
   </div>
 
@@ -2487,6 +2498,16 @@ function wireShare(){
   });
 }
 
+// The Print button. Nothing else to do: the browser's print dialog is also "Save as
+// PDF", and printPrepare()/printRestore() already hang off beforeprint/afterprint.
+// Inside a frame whose embedder forbids dialogs (a sandbox without allow-modals)
+// window.print() does nothing and gives no error, so it is wrapped rather than trusted.
+function wirePrint(){
+  document.getElementById("printBtn").addEventListener("click",()=>{
+    try{ window.print(); }catch(e){ /* a frame that may not print simply doesn't */ }
+  });
+}
+
 /* ── Deep links ───────────────────────────────────────────────────────────
    Two ways a tab can be asked for from outside, because a cross-origin frame
    cannot read the address bar above it at all:
@@ -2601,6 +2622,7 @@ function init(){
   // Open on a screen with room for the controls, shut on a phone — see .filterbar.
   setFilterOpen(window.matchMedia("(min-width:"+WIDE_MIN_PX+"px)").matches);
   wireShare();
+  wirePrint();
   renderActiveTab();
 }
 init();
