@@ -1611,6 +1611,7 @@ const UI_TEXT={
   storyLinks:"Where it comes from:",
   showNote:"Show note",
   showAllNotes:"Show all notes", hideAllNotes:"Hide all notes",
+  axisTight:"The scale starts at ${min} because no figure shown is lower; it starts lower when one is.",
   tiersHint:"Tap a tier to show or hide its studies in the table and in the charts. The same switches are in Filters.",
 };
 
@@ -1632,14 +1633,22 @@ const LEGEND_KEY=[
 const BAR_MAX_DOLLARS=650;      // right edge of the linear $ axis on "By Site" bars;
                                  // set just above the highest MTB-specific value (GMUG $617)
                                  // so bars use the full width without one outlier crushing the rest
-const LOG_AXIS_MIN=2;           // left edge of the Log axis, $. Must be >0 or log() breaks. Set just under
-                                 // the lowest figure in the dataset ($3, the non-MTB local rows) so
-                                 // nothing sits on the edge and the axis does not waste its left side
+const LOG_AXIS_MIN=2;           // left edge of the Log and Range axes when a LOW figure is shown, $. Must be
+                                 // >0 or log() breaks. Just under the lowest figure in the dataset ($3, the
+                                 // non-MTB local rows) so nothing sits on the edge
+const LOG_AXIS_TIGHT_MIN=20;    // left edge when EVERY figure shown is above it, $. The default view's lowest
+                                 // figure is $40, so starting at $2 left the left third of the plot empty.
+                                 // Between $10 and $25 reads well; $20 keeps $25 as the first gridline.
+                                 // It must never be used while a figure below it is shown: logPct() clamps to
+                                 // the edge, so a $3 dot would be drawn where $20 belongs — pickLogMin() below
+                                 // is what prevents that
 const LOG_AXIS_MAX=800;         // right edge of the Log axis, $. Just above the highest figure (GMUG $617);
                                  // anything larger is clamped to the edge, never drawn off it
 const LOG_TICKS_WIDE=[5,10,25,50,100,250,500];   // gridlines + labels, $, from WIDE_MIN_PX up
 const LOG_TICKS_NARROW=[10,100,500];             // fewer on a phone: at ~170px of track the wide set
                                                   // puts labels ~20px apart and they overprint
+const LOG_TICKS_WIDE_TIGHT=[25,50,100,250,500];  // the same sets for the tight axis: nothing below
+const LOG_TICKS_NARROW_TIGHT=[25,100,500];        // LOG_AXIS_TIGHT_MIN, or its labels would stack on the edge
 const STRIP_ROW_H=24;           // Range view: height of one site's row, px. Dot (12) plus a 12px label
 const STRIP_DOT_R=6;            // Range view: dot radius, px
 const STRIP_DOT_R_HI=5;         // the paler, smaller dot at the high end of a reported range
@@ -1835,6 +1844,7 @@ function siteTipHtml(s,which){
    position, which is all a log axis can honestly give. =========================== */
 function renderBySite(container){
   const rows=visibleSites();
+  pickLogMin(rows);
   if(axisMode==="range"){ renderRangeView(container,rows); return; }
   const log=axisMode==="log";
   const ticks=log ? logTicks() : [];
@@ -1872,7 +1882,9 @@ function renderBySite(container){
 // The switch plus the one line saying what the current view's geometry means.
 function viewHeadHtml(){
   const axis=AXES.find(a=>a.id===axisMode)||AXES.find(a=>a.id===DEFAULT_AXIS);
-  return axisControlHtml()+`<p class="axisnote" id="axisNote">${esc(axis.note)}</p>`;
+  const start = axisMode!=="linear" && logMin===LOG_AXIS_TIGHT_MIN
+    ? " "+UI_TEXT.axisTight.replace("${min}","$"+LOG_AXIS_TIGHT_MIN) : "";
+  return axisControlHtml()+`<p class="axisnote" id="axisNote">${esc(axis.note+start)}</p>`;
 }
 function wireAxisButtons(container){
   container.querySelectorAll(".axisbtn").forEach(b=>{
@@ -1891,12 +1903,26 @@ function axisControlHtml(){
 // $ -> percent along a Log track, clamped so an out-of-range figure sits ON the
 // edge instead of being drawn outside its own track.
 function logPct(v){
-  const lo=Math.log10(LOG_AXIS_MIN), hi=Math.log10(LOG_AXIS_MAX);
-  const t=(Math.log10(Math.max(v,LOG_AXIS_MIN))-lo)/(hi-lo);
+  const lo=Math.log10(logMin), hi=Math.log10(LOG_AXIS_MAX);
+  const t=(Math.log10(Math.max(v,logMin))-lo)/(hi-lo);
   return Math.max(0,Math.min(1,t))*100;
 }
+// The left edge in force for the CURRENT render. Chosen from the figures shown, not
+// fixed: the tight axis ($20) removes the empty left third in the default view, but
+// untick "MTB studies only" and $3 rows appear, and on a $20 axis they would be
+// clamped onto the edge and read as $20. So the axis steps back to $2 the moment any
+// shown figure — a low bound, a high bound, either cohort — is at or under the tight
+// edge. Every figure counts whether or not "Show ranges" is on, so toggling ranges
+// never rescales the plot.
+let logMin=LOG_AXIS_MIN;
+function pickLogMin(rows){
+  const figs=[];
+  rows.forEach(r=>["nl","nlHi","lo","loHi"].forEach(k=>{ if(r[k]!=null) figs.push(r[k]); }));
+  logMin = figs.length && Math.min(...figs)>LOG_AXIS_TIGHT_MIN ? LOG_AXIS_TIGHT_MIN : LOG_AXIS_MIN;
+}
 function logTicks(){
-  return window.innerWidth>=WIDE_MIN_PX ? LOG_TICKS_WIDE : LOG_TICKS_NARROW;
+  const wide=window.innerWidth>=WIDE_MIN_PX, tight=logMin===LOG_AXIS_TIGHT_MIN;
+  return wide ? (tight?LOG_TICKS_WIDE_TIGHT:LOG_TICKS_WIDE) : (tight?LOG_TICKS_NARROW_TIGHT:LOG_TICKS_NARROW);
 }
 function barLine(label,s,key,cls){
   const val=s[key], hi=s[key+"Hi"];
