@@ -670,6 +670,10 @@ button.tierrow[aria-pressed="false"] b{text-decoration:line-through}
 /* The Range view: one SVG in a card. Its width is measured at render (see
    renderRangeView), which is why the card's 10px padding and 1px border are
    subtracted there — change them here and change that 22 there. */
+.charthead{display:flex;flex-direction:column;gap:2px;padding:4px 4px 8px}
+.charttitle{font-size:.95rem;font-weight:700;color:var(--ink)}
+.chartsub{font-size:.78rem;color:var(--ink-soft);line-height:1.35}
+.n-short{display:none}
 .rangewrap{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px 4px;box-shadow:var(--card-glow)}
 .rangesvg{display:block;width:100%}
 .stripdot{cursor:pointer}
@@ -908,13 +912,20 @@ footer a:hover{text-decoration-thickness:2px}
       note for the duration of the print and puts them back afterwards.
    6. Page breaks: no site row, source row or legend line is cut in half, and the
       source table's header row repeats on every page.
+   7. Boxes: the "Showing…" line is outlined; the legend, the View row and the view's
+      one-line explanation are one outline drawn as three adjoining pieces (they are
+      three siblings in the markup). The Range view's zebra rows carry hairline
+      edges (.stripedge). With Show study names ticked the Range view reserves a
+      left-justified name column (PRINT_NAME_COL_W) — print only.
+   8. The footer carries the full canonical address. The address a browser prints in its own header/footer is the browser's,
+      not ours; the README tells people to switch that off.
    ============================================================================ */
 @page{
   margin:.45in .5in .6in;
   /* Margin boxes: Chrome/Edge 131+ draw these; anything older ignores them. Turn
      off "Headers and footers" in the print dialog or the browser's own copy of the
      date and address collides with them. */
-  @bottom-left{content:"postmillenniumrenaissance.com/studies";font:8pt/1 sans-serif;color:#555}
+  @bottom-left{content:"www.postmillenniumrenaissance.com/studies/";font:8pt/1 sans-serif;color:#555}
   @bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt/1 sans-serif;color:#555}
 }
 @media print{
@@ -970,22 +981,36 @@ footer a:hover{text-decoration-thickness:2px}
   .utilbar,.tabbar,.filterhead,.tooltip,.storybtnwrap,.notesall,.share-status,.sr-only{display:none !important}
   .notedetails summary{display:none}      /* "Show note" is a button label; the note itself prints */
   .masthead{margin-bottom:6px;padding:4px 0 8px}
-  .legend{margin:2px 0 8px}
+  /* ── The legend is one outlined box ──
+     The View switch is dropped on paper: it is a control, and the chart already says what it is. */
+  .legend{
+    margin:2px 0 0;padding:7px 12px 6px;gap:6px;
+    border:1px solid var(--line);border-radius:6px;
+  }
+  .axiscontrol{display:none}
+  .screen-only{display:none}
+  .axisnote{margin:0;padding:0}
+  .axisnote-start{display:block;margin:5px 0 0;font-style:italic}
+  .axisnote.print-empty{display:none}
+  #panels .panel[data-active="true"]>.axisnote{margin-bottom:7px}
+  .legend+#panels>.panel[data-active="true"]>:first-child{margin-top:9px}
+  .charthead{padding:2px 2px 6px}
+  .n-full{display:none}
+  .n-short{display:inline}
 
   /* ── The filter bar becomes one line of state plus the units caveat ──
      .filterbody[hidden] is load-bearing on screen; here it is overridden on
      purpose, because a folded filter bar must not swallow the caveat. */
   .filterbar{border:0;background:none;box-shadow:none;padding:0;margin:0 0 8px}
-  .filtersum{font-size:.8rem;font-weight:700;color:var(--ink)}
+  /* The state line is boxed so it reads as a label on the page ("this is what you are looking at"), not as stray text. */
+  .filtersum{
+    display:inline-block;font-size:.8rem;font-weight:700;color:var(--ink);
+    border:1px solid var(--ink-soft);border-radius:6px;background:var(--track-bg);padding:4px 10px;margin:0 0 2px;
+  }
   .filterbody,.filterbody[hidden]{display:block;border:0;margin:4px 0 0;padding:0}
   .filterbody>*:not(.note){display:none !important}   /* checkboxes and tier chips */
   .filterbar .note{font-size:.76rem}
 
-  /* ── View switch: print the selected view as a word, drop the other buttons ── */
-  .axiscontrol .axisbtn[aria-pressed="false"]{display:none}
-  .axiscontrol .axisbtn[aria-pressed]{
-    min-height:0;padding:0;border:0;background:none;color:var(--ink);font-weight:800;font-size:.8rem;
-  }
   .axisbtn::after,.tierbtn::after{display:none}
   .axisrow{position:static}               /* sticky has nothing to stick to on paper */
 
@@ -993,6 +1018,9 @@ footer a:hover{text-decoration-thickness:2px}
   .legend,.legendrow,.tierrow,.siterow,.barline,.axisnote,.rangewrap{break-inside:avoid}
   .siterow{padding:7px 0}                 /* 10px on screen; this is what lets Log and Linear fit two pages, not three */
   .srcnote,.rangewrap,.filterbar{box-shadow:none}
+  /* Range view: the zebra bands get a thin, slightly darker hairline top and bottom (the bands alone are 5% grey and
+     wash out on an office printer). The lines are in the SVG already, with no stroke on screen. */
+  .stripedge{stroke:#b4b4b4;stroke-width:.75}
   .srcnote{border-color:var(--line)}
   .axisnote,.filtersum,.legend{break-after:avoid}
   h3{break-after:avoid}
@@ -1033,7 +1061,10 @@ footer a:hover{text-decoration-thickness:2px}
     font-size:.82em;font-weight:400;color:var(--ink-soft);overflow-wrap:anywhere;word-break:break-all;
   }
   .srclink-icon{display:none}
-  footer{break-inside:avoid;font-size:.7rem;margin-top:10px;padding-top:8px}
+  footer{break-inside:avoid;font-size:.7rem;margin-top:6px;padding-top:6px}
+  /* The full canonical address replaces the bare domain. (The browser's own header/footer line, which shows
+     whatever address the page was loaded from, is not the page's to change; see README, "In the print dialog".) */
+  footer a{font-weight:700;text-decoration:none}
 }
 </style>
 </head>
@@ -1099,7 +1130,7 @@ footer a:hover{text-decoration-thickness:2px}
       <label id="namesControl" style="display:none"><input type="checkbox" id="showNames"> Show study names</label>
       <!-- Confidence toggles are BUILT FROM CONF_META by buildTierFilters(). -->
       <span class="tierfilter" id="tierFilter"></span>
-      <span class="note" id="filterNote">Bars and dots plot the dollar figure exactly as each study reported it. Studies measure different things — a day, a night, a trip, a whole visit — so a unit badge sits on every value. Don't read two different units as directly comparable; that inconsistency is itself part of the story (see Sources tab).</span>
+      <span class="note" id="filterNote"><span class="n-full">Bars and dots plot the dollar figure exactly as each study reported it. Studies measure different things — a day, a night, a trip, a whole visit — so a unit badge sits on every value. Don't read two different units as directly comparable; that inconsistency is itself part of the story (see Sources tab).</span><span class="n-short">Each figure is plotted exactly as its study reported it, in that study's own unit (day, night, trip or visit). Figures with different units are not directly comparable.</span></span>
     </div>
   </div>
 
@@ -1111,9 +1142,9 @@ footer a:hover{text-decoration-thickness:2px}
   <div class="tooltip" id="tooltip" role="tooltip"></div>
 
   <footer>
-    Compiled by Jon Lontai for Post Millennium Renaissance ·
-    <a href="https://www.postmillenniumrenaissance.com/" target="_top">postmillenniumrenaissance.com</a>
-    · Sourcing discipline: every figure traces to a page number in a named study, or is marked calc, with the arithmetic and the reason for it shown in its note. See the Sources tab for what didn't make the cut and why.
+    Compiled by Jon Lontai ·
+    <a href="https://www.postmillenniumrenaissance.com/studies/" target="_top">www.postmillenniumrenaissance.com/studies/</a>
+    · Strict Data Integrity: Zero assumptions or guesses. Every figure is traced straight to the source page or marked calc with fully transparent math. Visit the Sources tab for direct links to every cited study and notes on excluded research.
   </footer>
 
 </div>
@@ -1549,6 +1580,7 @@ const TABS=[
      names   true if the view has study names to show, which makes the filter bar's
              "Show study names" checkbox appear while it is the active view
      label   the button text
+     printNote  false = leave the note off a print (the scale-start sentence still prints)
      note    the one line printed above the chart saying what the geometry MEANS.
              A log axis in particular cannot be read without being told.
    "range" is not a different scale — it is the same log axis laid out as the
@@ -1558,7 +1590,7 @@ const TABS=[
 const AXES=[
   {id:"linear", label:"Linear", note:"Bars run from $0 to $650. Compare only bars with the same unit badge."},
   {id:"log",    label:"Log",    note:"Log scale: each gridline is 10× the last, so equal spacing means equal ratio, not equal dollars. Compare only the same unit badge."},
-  {id:"range",  label:"Range",  names:true, note:"Every figure on one log scale, non-local above local. A line joins the two ends of a reported range. Point at a row for the study name (tap a dot on a phone), or tick Show study names under Filters. Compare only figures with the same unit."},
+  {id:"range",  label:"Range",  names:true, printNote:false, note:"Every figure on one log scale, non-local above local. A line joins the two ends of a reported range. Point at a row for the study name (tap a dot on a phone), or tick Show study names under Filters. Compare only figures with the same unit."},
 ];
 
 /* ==== HASH_ALIASES — addresses that open a particular VIEW of a tab, not a
@@ -1585,7 +1617,9 @@ const HASH_ALIASES=[
      tiersAll / tiersSome  the confidence filter's state; {list} is the letters
    tabsLabel  the accessible name of the tab bar.
    viewLabel  the Linear / Log / Range switch's label and accessible name.
-   laneNonlocal / laneLocal / laneEmpty / rangeAria   the Range view's lane titles,
+   chartTitle / chartSub   the heading above the Range plot.
+   laneNonlocal / laneLocal / laneEmpty / rangeAria   the cohort names (Range lane titles, the legend and the
+              Sources table's column heads), the line printed in a lane with nothing in it,
               the line printed in a lane with nothing in it, and the plot's name.
    notMtb     the tag on a Sources row whose STUDY is not about mountain biking. It
               describes the study, not the place: Bentonville is a famous mountain
@@ -1602,9 +1636,11 @@ const UI_TEXT={
   tiersAll:"all tiers", tiersSome:"tiers {list}",
   tabsLabel:"Views",
   viewLabel:"View",
-  laneNonlocal:"Non-local / out-of-town", laneLocal:"Local / resident",
+  laneNonlocal:"Out-of-town visitors", laneLocal:"Local residents",
+  chartTitle:"Reported visitor spending, by study",
+  chartSub:"Dollars on a log scale. Each figure is in the unit its study reported.",
   laneEmpty:"No figure reported in the studies shown.",
-  rangeAria:"Every reported figure on a log scale, non-local above local",
+  rangeAria:"Reported visitor spending by study on a log scale, out-of-town visitors above local residents",
   notMtb:"— study not MTB-specific",
   storyBtn:"The story", storyAria:"The story of {site}",
   storyNote:"Background on the place, compiled from public sources. It is not part of the study and not one of the sourced figures.",
@@ -1661,6 +1697,15 @@ const PRINT_RANGE_W=740;         // Range view: width it is redrawn at for print
                                 // leave 698-720px between the margins, so 740 scales DOWN slightly (~0.95) and the
                                 // 12px labels still print at ~8.5pt. Drawn at screen width (often 950+) and scaled down, they
                                 // printed at ~7pt. Raise it and the print labels shrink; lower it and they grow.
+const PRINT_NAME_COL_W=280;      // Range view, PRINT with "Show study names" ticked: width of the left-justified name column, CSS px.
+                                // The plot moves right to make room. Sized so the longest name ("Pikes Peak Region – Non-Resident
+                                // Overnight", 42 characters at 11px) fits whole; shrink it and long names start losing their
+                                // distinguishing last word to the ellipsis
+const PRINT_RANGE_MAX_H=600;     // Range view, PRINT: tallest the plot may be, in drawing units, before rows are tightened to keep the page to ONE sheet.
+                                // Measured: header, boxes and footer take the rest of a Letter page, leaving ~600 for the plot, worst case (all studies, all tiers, names on) included. Raise it and a full
+                                // (all studies, all tiers) print spills to page two; lower it and ordinary prints get tighter rows than they need
+const PRINT_ROW_H_MIN=17;       // the floor for that tightening: a 12px dot plus 2.5px above and below. Below this the dots touch their neighbours
+const NAME_CHAR_PX=6.0;         // average width of one 11px name character in that column, for fitName()
 const WIDE_MIN_PX=640;          // the one phone/desktop breakpoint the script needs to know about; it
                                  // matches the 640px @media block. Picks the tick set and whether the
                                  // filter bar starts open
@@ -1884,7 +1929,10 @@ function viewHeadHtml(){
   const axis=AXES.find(a=>a.id===axisMode)||AXES.find(a=>a.id===DEFAULT_AXIS);
   const start = axisMode!=="linear" && logMin===LOG_AXIS_TIGHT_MIN
     ? " "+UI_TEXT.axisTight.replace("${min}","$"+LOG_AXIS_TIGHT_MIN) : "";
-  return axisControlHtml()+`<p class="axisnote" id="axisNote">${esc(axis.note+start)}</p>`;
+  // Two spans so a print can drop the explanation (a view that says "point at a row" means nothing on paper) and
+  // still keep the sentence saying where the scale starts.
+  return axisControlHtml()+`<p class="axisnote${axis.printNote===false&&!start?" print-empty":""}" id="axisNote"><span class="axisnote-main${axis.printNote===false?" screen-only":""}">${esc(axis.note)}</span>`+
+    (start?`<span class="axisnote-start">${esc(start.trim())}</span>`:"")+`</p>`;
 }
 function wireAxisButtons(container){
   container.querySelectorAll(".axisbtn").forEach(b=>{
@@ -1986,8 +2034,13 @@ function renderRangeView(container,rows){
   // .rangewrap pads 10px each side and borders 1px; measure what is really left.
   const W=printWidth!=null ? printWidth : Math.max(280, container.clientWidth-22);
   if(printWidth==null) stripW=container.clientWidth;   // a print redraw must not poison the resize handler's memory
-  const x=v=>STRIP_PAD+logPct(v)/100*(W-2*STRIP_PAD);
+  // On paper with names ticked there is no hover, so the names get a left-justified column of their own and the plot
+  // starts to its right. On screen (and on paper with names off) gutter is 0 and nothing moves.
+  const gutter=(printWidth!=null && filterShowNames) ? PRINT_NAME_COL_W : 0;
+  const x=v=>gutter+STRIP_PAD+logPct(v)/100*(W-gutter-2*STRIP_PAD);
   const ticks=logTicks();
+  const rowH=printWidth!=null ? printRowH(rows) : STRIP_ROW_H;
+  const laneHead=printWidth!=null ? 34 : 40, laneFoot=printWidth!=null ? 10 : 14;   // a print trims the gaps around each lane (see printRowH)
   const lanes=[
     {key:"nl", hi:"nlHi", cls:"nonlocal", title:UI_TEXT.laneNonlocal},
     {key:"lo", hi:"loHi", cls:"local",    title:UI_TEXT.laneLocal},
@@ -1996,7 +2049,7 @@ function renderRangeView(container,rows){
   lanes.forEach(lane=>{
     const items=rows.filter(r=>r[lane.key]!=null);
     const headY=y;
-    const rowsTop=y+40, rowsH=Math.max(items.length,1)*STRIP_ROW_H;
+    const rowsTop=y+laneHead, rowsH=Math.max(items.length,1)*rowH;
     svg+=`<text x="${STRIP_PAD}" y="${headY+14}" font-size="12" font-weight="700" fill="var(--${lane.cls})">${esc(lane.title)}</text>`;
     ticks.forEach(t=>{
       svg+=`<text x="${x(t)}" y="${headY+32}" font-size="12" fill="var(--ink-soft)" text-anchor="middle">$${t}</text>`;
@@ -2006,18 +2059,24 @@ function renderRangeView(container,rows){
     // labels and its tap circles together — so that pointing at ANY part of a row,
     // including the empty stretch beside the dots, reveals that row's study name.
     items.forEach((r,i)=>{
-      if(i%2===0) svg+=`<rect x="0" y="${rowsTop+i*STRIP_ROW_H}" width="${W}" height="${STRIP_ROW_H}" fill="var(--track-bg)"/>`;
+      if(i%2===0){
+        const bandTop=rowsTop+i*rowH;
+        svg+=`<rect x="0" y="${bandTop}" width="${W}" height="${rowH}" fill="var(--track-bg)"/>`;
+        // Hairlines on the band's top and bottom edges. No stroke attribute here on purpose: on screen they draw nothing;
+        // @media print gives .stripedge its stroke.
+        svg+=`<line class="stripedge" x1="0" y1="${bandTop}" x2="${W}" y2="${bandTop}"/><line class="stripedge" x1="0" y1="${bandTop+rowH}" x2="${W}" y2="${bandTop+rowH}"/>`;
+      }
     });
     ticks.forEach(t=>{
       svg+=`<line x1="${x(t)}" y1="${rowsTop-4}" x2="${x(t)}" y2="${rowsTop+rowsH}" stroke="var(--line)" stroke-width="1"/>`;
     });
     if(!items.length) svg+=`<text x="${STRIP_PAD}" y="${rowsTop+16}" font-size="12" font-style="italic" fill="var(--ink-soft)">${esc(UI_TEXT.laneEmpty)}</text>`;
     items.forEach((r,i)=>{
-      const top=rowsTop+i*STRIP_ROW_H, cy=top+STRIP_ROW_H/2;
+      const top=rowsTop+i*rowH, cy=top+rowH/2;
       const lo=r[lane.key], hi=(filterShowRanges && r[lane.hi]!=null) ? r[lane.hi] : null;
       const xLo=x(lo), xHi=hi!=null ? x(hi) : xLo;
       const at=`data-site="${esc(r.id)}" data-which="${lane.key}"`;
-      let row=`<rect class="striphover" x="0" y="${top}" width="${W}" height="${STRIP_ROW_H}"/>`;
+      let row=`<rect class="striphover" x="0" y="${top}" width="${W}" height="${rowH}"/>`;
       if(hi!=null) row+=`<line x1="${xLo}" y1="${cy}" x2="${xHi}" y2="${cy}" stroke="var(--${lane.cls})" stroke-width="2.5" opacity=".55"/>`;
       row+=`<circle cx="${xLo}" cy="${cy}" r="${STRIP_DOT_R}" fill="var(--${lane.cls})" stroke="var(--card)" stroke-width="1.5"/>`;
       if(hi!=null) row+=`<circle cx="${xHi}" cy="${cy}" r="${STRIP_DOT_R_HI}" fill="var(--${lane.cls})" opacity=".65" stroke="var(--card)" stroke-width="1.5"/>`;
@@ -2025,30 +2084,43 @@ function renderRangeView(container,rows){
       // there, hard against the dot; the study NAME sits beyond it and appears only
       // while the row is pointed at (.stripname in CSS).
       const unit=UNIT_META[r.unit], unitW=unit.length*STRIP_CHAR_PX;
-      const roomL=xLo-STRIP_DOT_R-6-STRIP_PAD, roomR=(W-STRIP_PAD)-(xHi+STRIP_DOT_R+6);
+      const roomL=xLo-STRIP_DOT_R-6-STRIP_PAD-gutter, roomR=(W-STRIP_PAD)-(xHi+STRIP_DOT_R+6);
       const onLeft=roomL>roomR;
       const edge=onLeft ? xLo-STRIP_DOT_R-6 : xHi+STRIP_DOT_R+6;
       const anchor=onLeft ? "end" : "start";
       const dir=onLeft ? -1 : 1;
       row+=`<text x="${edge}" y="${cy+4}" font-size="12" fill="var(--ink-soft)" text-anchor="${anchor}" pointer-events="none">${esc(unit)}</text>`;
-      const name=fitName(r.site, Math.max(onLeft?roomL:roomR,0)-unitW-8);
-      if(name) row+=`<text class="stripname" x="${edge+dir*(unitW+8)}" y="${cy+4}" font-size="12" font-weight="600" fill="var(--ink)" text-anchor="${anchor}" pointer-events="none">${esc(name)}</text>`;
+      if(gutter){
+        // Left-justified column: every name starts at the same x, so the eye reads straight down it.
+        const name=fitName(r.site, gutter-STRIP_PAD-8, NAME_CHAR_PX);
+        row+=`<text class="stripname stripcol" x="${STRIP_PAD}" y="${cy+4}" font-size="11" font-weight="600" fill="var(--ink)" text-anchor="start" pointer-events="none">${esc(name)}</text>`;
+      }else{
+        const name=fitName(r.site, Math.max(onLeft?roomL:roomR,0)-unitW-8);
+        if(name) row+=`<text class="stripname" x="${edge+dir*(unitW+8)}" y="${cy+4}" font-size="12" font-weight="600" fill="var(--ink)" text-anchor="${anchor}" pointer-events="none">${esc(name)}</text>`;
+      }
       row+=`<circle class="stripdot" ${at} cx="${xLo}" cy="${cy}" r="${STRIP_HIT_R}" fill="transparent"/>`;
       if(hi!=null) row+=`<circle class="stripdot" ${at} cx="${xHi}" cy="${cy}" r="${STRIP_HIT_R}" fill="transparent"/>`;
       svg+=`<g class="striprow">${row}</g>`;
     });
-    y=rowsTop+rowsH+14;
+    y=rowsTop+rowsH+laneFoot;
   });
-  html+=`<div class="rangewrap"><svg class="rangesvg${filterShowNames?" shownames":""}" viewBox="0 0 ${W} ${y}" width="100%" role="img" aria-label="${esc(UI_TEXT.rangeAria)}">${svg}</svg></div>`;
+  html+=`<div class="rangewrap"><div class="charthead"><span class="charttitle">${esc(UI_TEXT.chartTitle)}</span><span class="chartsub">${esc(UI_TEXT.chartSub)}</span></div><svg class="rangesvg${filterShowNames?" shownames":""}" viewBox="0 0 ${W} ${y}" width="100%" role="img" aria-label="${esc(UI_TEXT.rangeAria)}">${svg}</svg></div>`;
   container.innerHTML=html;
   wireAxisButtons(container);
   wireBarEvents(container);
 }
+// Row height for a print, shrunk so the whole chart still fits one page when many rows are shown (MTB-only off, Low on).
+// Normal views stay at STRIP_ROW_H; only a long chart is tightened, and never below PRINT_ROW_H_MIN.
+function printRowH(rows){
+  const n=["nl","lo"].reduce((t,k)=>t+Math.max(rows.filter(r=>r[k]!=null).length,1),0);
+  const fixed=2*(34+10);   // each lane in a print: 34px above its first row, 10px below its last
+  return Math.max(PRINT_ROW_H_MIN, Math.min(STRIP_ROW_H, Math.floor((PRINT_RANGE_MAX_H-fixed)/n)));
+}
 // A study name cut to fit `room` pixels, with an ellipsis — or "" when there is no
 // room for even a few characters, in which case the row simply has no hover name
 // and the tooltip (which always has the full one) is the way to read it.
-function fitName(name,room){
-  const chars=Math.floor(room/STRIP_CHAR_PX);
+function fitName(name,room,charPx=STRIP_CHAR_PX){
+  const chars=Math.floor(room/charPx);
   if(chars<5) return "";
   return name.length>chars ? name.slice(0,chars-1).trimEnd()+"…" : name;
 }
@@ -2191,8 +2263,8 @@ function renderSources(container){
       <div style="overflow-x:auto"><table class="srctable">
         <thead><tr>
           <th>Site</th>
-          <th><span class="swatch" style="background:var(--nonlocal)"></span>Non-local / out-of-town</th>
-          <th><span class="swatch" style="background:var(--local)"></span>Local / resident</th>
+          <th><span class="swatch" style="background:var(--nonlocal)"></span>${esc(UI_TEXT.laneNonlocal)}</th>
+          <th><span class="swatch" style="background:var(--local)"></span>${esc(UI_TEXT.laneLocal)}</th>
           <th>Confidence</th><th>Source</th><th>Note</th>
         </tr></thead>
         <tbody>${srcRows}</tbody>
@@ -2208,8 +2280,8 @@ function renderSources(container){
       <div style="overflow-x:auto"><table class="srctable">
         <thead><tr>
           <th>Site</th>
-          <th><span class="swatch" style="background:var(--nonlocal)"></span>Non-local / out-of-town</th>
-          <th><span class="swatch" style="background:var(--local)"></span>Local / resident</th>
+          <th><span class="swatch" style="background:var(--nonlocal)"></span>${esc(UI_TEXT.laneNonlocal)}</th>
+          <th><span class="swatch" style="background:var(--local)"></span>${esc(UI_TEXT.laneLocal)}</th>
           <th>Confidence</th><th>Source</th><th>Note</th>
         </tr></thead>
         <tbody>${foreignRows}</tbody>
@@ -2314,8 +2386,8 @@ function buildLegendTop(){
   // "medium WHAT?" — and it has to live out here, not only in the filter bar,
   // because the filter bar folds shut on a phone and takes its tier chips along.
   let marks="";
-  marks+=`<span class="item"><span class="swatch" style="background:var(--nonlocal)"></span>Non-local / out-of-town</span>`;
-  marks+=`<span class="item"><span class="swatch" style="background:var(--local)"></span>Local / resident</span>`;
+  marks+=`<span class="item"><span class="swatch" style="background:var(--nonlocal)"></span>${esc(UI_TEXT.laneNonlocal)}</span>`;
+  marks+=`<span class="item"><span class="swatch" style="background:var(--local)"></span>${esc(UI_TEXT.laneLocal)}</span>`;
   // The marks that are neither a cohort nor a tier — see LEGEND_KEY.
   LEGEND_KEY.forEach(m=>{
     const mark = m.kind==="range" ? `<span class="swatch ${axisMode==="linear"?"hatch":"rangeline"}"></span>`
