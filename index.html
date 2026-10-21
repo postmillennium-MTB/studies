@@ -834,6 +834,7 @@ button.tierrow[aria-pressed="false"] b{text-decoration:line-through}
 footer{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);font-size:.76rem;color:var(--ink-soft)}
 footer a{color:var(--accent);font-weight:600;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}
 footer a:hover{text-decoration-thickness:2px}
+.foot-url{display:none}     /* print-only: the full address, see @media print */
 
 /* ── Theme names beside the swatches ──────────────────────────────────────────
    Its OWN breakpoint, later than the 640px one below, and measured rather than
@@ -908,13 +909,21 @@ footer a:hover{text-decoration-thickness:2px}
       note for the duration of the print and puts them back afterwards.
    6. Page breaks: no site row, source row or legend line is cut in half, and the
       source table's header row repeats on every page.
+   7. Boxes: the "Showing…" line is outlined; the legend, the View row and the view's
+      one-line explanation are one outline drawn as three adjoining pieces (they are
+      three siblings in the markup). The Range view's zebra rows carry hairline
+      edges (.stripedge). With Show study names ticked the Range view reserves a
+      left-justified name column (PRINT_NAME_COL_W) — print only.
+   8. The footer prints the full canonical address (.foot-url) in place of the bare
+      domain. The address a browser prints in its own header/footer is the browser's,
+      not ours; the README tells people to switch that off.
    ============================================================================ */
 @page{
   margin:.45in .5in .6in;
   /* Margin boxes: Chrome/Edge 131+ draw these; anything older ignores them. Turn
      off "Headers and footers" in the print dialog or the browser's own copy of the
      date and address collides with them. */
-  @bottom-left{content:"postmillenniumrenaissance.com/studies";font:8pt/1 sans-serif;color:#555}
+  @bottom-left{content:"www.postmillenniumrenaissance.com/studies/";font:8pt/1 sans-serif;color:#555}
   @bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt/1 sans-serif;color:#555}
 }
 @media print{
@@ -970,13 +979,29 @@ footer a:hover{text-decoration-thickness:2px}
   .utilbar,.tabbar,.filterhead,.tooltip,.storybtnwrap,.notesall,.share-status,.sr-only{display:none !important}
   .notedetails summary{display:none}      /* "Show note" is a button label; the note itself prints */
   .masthead{margin-bottom:6px;padding:4px 0 8px}
-  .legend{margin:2px 0 8px}
+  /* ── Legend + View + "what this view shows" are ONE outlined box ──
+     They are three siblings in the markup (#legendTop, then .axiscontrol and .axisnote at the top of the active panel), so
+     the box is drawn as three pieces with matching side borders and no gaps: the legend carries the top edge, the
+     note carries the bottom, the View row sits between. The Sources tab has no View row, so there the legend is a
+     complete box of its own (the :has() rule is what opens its bottom edge when a View row follows). */
+  .legend{
+    margin:2px 0 0;padding:7px 12px 6px;gap:6px;
+    border:1px solid var(--line);border-radius:6px;
+  }
+  .legend:has(+ #panels .panel[data-active="true"] .axiscontrol){border-bottom:0;border-radius:6px 6px 0 0;padding-bottom:3px}
+  #panels .axiscontrol{margin:0;padding:2px 12px 3px;border:solid var(--line);border-width:0 1px}
+  #panels .axisnote{margin:0 0 9px;padding:0 12px 7px;border:solid var(--line);border-width:0 1px 1px;border-radius:0 0 6px 6px}
+  .legend+#panels>.panel[data-active="true"]>:first-child:not(.axiscontrol){margin-top:9px}
 
   /* ── The filter bar becomes one line of state plus the units caveat ──
      .filterbody[hidden] is load-bearing on screen; here it is overridden on
      purpose, because a folded filter bar must not swallow the caveat. */
   .filterbar{border:0;background:none;box-shadow:none;padding:0;margin:0 0 8px}
-  .filtersum{font-size:.8rem;font-weight:700;color:var(--ink)}
+  /* The state line is boxed so it reads as a label on the page ("this is what you are looking at"), not as stray text. */
+  .filtersum{
+    display:inline-block;font-size:.8rem;font-weight:700;color:var(--ink);
+    border:1px solid var(--ink-soft);border-radius:6px;background:var(--track-bg);padding:4px 10px;margin:0 0 2px;
+  }
   .filterbody,.filterbody[hidden]{display:block;border:0;margin:4px 0 0;padding:0}
   .filterbody>*:not(.note){display:none !important}   /* checkboxes and tier chips */
   .filterbar .note{font-size:.76rem}
@@ -993,6 +1018,9 @@ footer a:hover{text-decoration-thickness:2px}
   .legend,.legendrow,.tierrow,.siterow,.barline,.axisnote,.rangewrap{break-inside:avoid}
   .siterow{padding:7px 0}                 /* 10px on screen; this is what lets Log and Linear fit two pages, not three */
   .srcnote,.rangewrap,.filterbar{box-shadow:none}
+  /* Range view: the zebra bands get a thin, slightly darker hairline top and bottom (the bands alone are 5% grey and
+     wash out on an office printer). The lines are in the SVG already, with no stroke on screen. */
+  .stripedge{stroke:#b4b4b4;stroke-width:.75}
   .srcnote{border-color:var(--line)}
   .axisnote,.filtersum,.legend{break-after:avoid}
   h3{break-after:avoid}
@@ -1033,7 +1061,11 @@ footer a:hover{text-decoration-thickness:2px}
     font-size:.82em;font-weight:400;color:var(--ink-soft);overflow-wrap:anywhere;word-break:break-all;
   }
   .srclink-icon{display:none}
-  footer{break-inside:avoid;font-size:.7rem;margin-top:10px;padding-top:8px}
+  footer{break-inside:avoid;font-size:.7rem;margin-top:6px;padding-top:6px}
+  /* The full canonical address replaces the bare domain. (The browser's own header/footer line, which shows
+     whatever address the page was loaded from, is not the page's to change; see README, "In the print dialog".) */
+  .foot-home{display:none}
+  .foot-url{display:inline;font-weight:700;text-decoration:none}
 }
 </style>
 </head>
@@ -1112,7 +1144,7 @@ footer a:hover{text-decoration-thickness:2px}
 
   <footer>
     Compiled by Jon Lontai for Post Millennium Renaissance ·
-    <a href="https://www.postmillenniumrenaissance.com/" target="_top">postmillenniumrenaissance.com</a>
+    <a class="foot-home" href="https://www.postmillenniumrenaissance.com/" target="_top">postmillenniumrenaissance.com</a><a class="foot-url" href="https://www.postmillenniumrenaissance.com/studies/" target="_top">www.postmillenniumrenaissance.com/studies/</a>
     · Sourcing discipline: every figure traces to a page number in a named study, or is marked calc, with the arithmetic and the reason for it shown in its note. See the Sources tab for what didn't make the cut and why.
   </footer>
 
@@ -1661,6 +1693,11 @@ const PRINT_RANGE_W=740;         // Range view: width it is redrawn at for print
                                 // leave 698-720px between the margins, so 740 scales DOWN slightly (~0.95) and the
                                 // 12px labels still print at ~8.5pt. Drawn at screen width (often 950+) and scaled down, they
                                 // printed at ~7pt. Raise it and the print labels shrink; lower it and they grow.
+const PRINT_NAME_COL_W=280;      // Range view, PRINT with "Show study names" ticked: width of the left-justified name column, CSS px.
+                                // The plot moves right to make room. Sized so the longest name ("Pikes Peak Region – Non-Resident
+                                // Overnight", 42 characters at 11px) fits whole; shrink it and long names start losing their
+                                // distinguishing last word to the ellipsis
+const NAME_CHAR_PX=6.0;         // average width of one 11px name character in that column, for fitName()
 const WIDE_MIN_PX=640;          // the one phone/desktop breakpoint the script needs to know about; it
                                  // matches the 640px @media block. Picks the tick set and whether the
                                  // filter bar starts open
@@ -1986,7 +2023,10 @@ function renderRangeView(container,rows){
   // .rangewrap pads 10px each side and borders 1px; measure what is really left.
   const W=printWidth!=null ? printWidth : Math.max(280, container.clientWidth-22);
   if(printWidth==null) stripW=container.clientWidth;   // a print redraw must not poison the resize handler's memory
-  const x=v=>STRIP_PAD+logPct(v)/100*(W-2*STRIP_PAD);
+  // On paper with names ticked there is no hover, so the names get a left-justified column of their own and the plot
+  // starts to its right. On screen (and on paper with names off) gutter is 0 and nothing moves.
+  const gutter=(printWidth!=null && filterShowNames) ? PRINT_NAME_COL_W : 0;
+  const x=v=>gutter+STRIP_PAD+logPct(v)/100*(W-gutter-2*STRIP_PAD);
   const ticks=logTicks();
   const lanes=[
     {key:"nl", hi:"nlHi", cls:"nonlocal", title:UI_TEXT.laneNonlocal},
@@ -2006,7 +2046,13 @@ function renderRangeView(container,rows){
     // labels and its tap circles together — so that pointing at ANY part of a row,
     // including the empty stretch beside the dots, reveals that row's study name.
     items.forEach((r,i)=>{
-      if(i%2===0) svg+=`<rect x="0" y="${rowsTop+i*STRIP_ROW_H}" width="${W}" height="${STRIP_ROW_H}" fill="var(--track-bg)"/>`;
+      if(i%2===0){
+        const bandTop=rowsTop+i*STRIP_ROW_H;
+        svg+=`<rect x="0" y="${bandTop}" width="${W}" height="${STRIP_ROW_H}" fill="var(--track-bg)"/>`;
+        // Hairlines on the band's top and bottom edges. No stroke attribute here on purpose: on screen they draw nothing;
+        // @media print gives .stripedge its stroke.
+        svg+=`<line class="stripedge" x1="0" y1="${bandTop}" x2="${W}" y2="${bandTop}"/><line class="stripedge" x1="0" y1="${bandTop+STRIP_ROW_H}" x2="${W}" y2="${bandTop+STRIP_ROW_H}"/>`;
+      }
     });
     ticks.forEach(t=>{
       svg+=`<line x1="${x(t)}" y1="${rowsTop-4}" x2="${x(t)}" y2="${rowsTop+rowsH}" stroke="var(--line)" stroke-width="1"/>`;
@@ -2025,14 +2071,20 @@ function renderRangeView(container,rows){
       // there, hard against the dot; the study NAME sits beyond it and appears only
       // while the row is pointed at (.stripname in CSS).
       const unit=UNIT_META[r.unit], unitW=unit.length*STRIP_CHAR_PX;
-      const roomL=xLo-STRIP_DOT_R-6-STRIP_PAD, roomR=(W-STRIP_PAD)-(xHi+STRIP_DOT_R+6);
+      const roomL=xLo-STRIP_DOT_R-6-STRIP_PAD-gutter, roomR=(W-STRIP_PAD)-(xHi+STRIP_DOT_R+6);
       const onLeft=roomL>roomR;
       const edge=onLeft ? xLo-STRIP_DOT_R-6 : xHi+STRIP_DOT_R+6;
       const anchor=onLeft ? "end" : "start";
       const dir=onLeft ? -1 : 1;
       row+=`<text x="${edge}" y="${cy+4}" font-size="12" fill="var(--ink-soft)" text-anchor="${anchor}" pointer-events="none">${esc(unit)}</text>`;
-      const name=fitName(r.site, Math.max(onLeft?roomL:roomR,0)-unitW-8);
-      if(name) row+=`<text class="stripname" x="${edge+dir*(unitW+8)}" y="${cy+4}" font-size="12" font-weight="600" fill="var(--ink)" text-anchor="${anchor}" pointer-events="none">${esc(name)}</text>`;
+      if(gutter){
+        // Left-justified column: every name starts at the same x, so the eye reads straight down it.
+        const name=fitName(r.site, gutter-STRIP_PAD-8, NAME_CHAR_PX);
+        row+=`<text class="stripname stripcol" x="${STRIP_PAD}" y="${cy+4}" font-size="11" font-weight="600" fill="var(--ink)" text-anchor="start" pointer-events="none">${esc(name)}</text>`;
+      }else{
+        const name=fitName(r.site, Math.max(onLeft?roomL:roomR,0)-unitW-8);
+        if(name) row+=`<text class="stripname" x="${edge+dir*(unitW+8)}" y="${cy+4}" font-size="12" font-weight="600" fill="var(--ink)" text-anchor="${anchor}" pointer-events="none">${esc(name)}</text>`;
+      }
       row+=`<circle class="stripdot" ${at} cx="${xLo}" cy="${cy}" r="${STRIP_HIT_R}" fill="transparent"/>`;
       if(hi!=null) row+=`<circle class="stripdot" ${at} cx="${xHi}" cy="${cy}" r="${STRIP_HIT_R}" fill="transparent"/>`;
       svg+=`<g class="striprow">${row}</g>`;
@@ -2047,8 +2099,8 @@ function renderRangeView(container,rows){
 // A study name cut to fit `room` pixels, with an ellipsis — or "" when there is no
 // room for even a few characters, in which case the row simply has no hover name
 // and the tooltip (which always has the full one) is the way to read it.
-function fitName(name,room){
-  const chars=Math.floor(room/STRIP_CHAR_PX);
+function fitName(name,room,charPx=STRIP_CHAR_PX){
+  const chars=Math.floor(room/charPx);
   if(chars<5) return "";
   return name.length>chars ? name.slice(0,chars-1).trimEnd()+"…" : name;
 }
