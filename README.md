@@ -42,8 +42,8 @@ smoothing over the three things that make them hard to compare:
 
 Hover or tap any bar or dot for the full citation and caveat.
 
-The source table carries both cohorts as their own columns — **Non-local /
-out-of-town** and **Local / resident** — with the same swatch, unit badge and
+The source table carries both cohorts as their own columns — **Out-of-town
+visitors** and **Local residents** — with the same swatch, unit badge and
 "not reported" wording the charts use, so nothing about which figure is whose
 depends on having read the chart first. On a phone each study stacks into a
 labelled card instead of a six-column table, which reads better and is also the
@@ -59,7 +59,7 @@ File → Print (or *Save as PDF*) from the open tab. The print layout is its own
 - **Range view:** redrawn at page width while printing so its labels print at about 8.5pt rather than 7pt.
   - The zebra rows have a thin, slightly darker grey line on their top and bottom edges.
   - **Show study names** ticked: on paper the names print in their own left-justified column, with the plot to its right (there is no hover on paper). Unticked, a row prints only its unit, as before. On screen the names still sit beside the dots.
-- **Boxes:** the filter line (*Showing 14 of 21 · …*) is outlined, and the legend, the View line and its one-sentence explanation share one outline.
+- **Boxes and trimming:** the filter line (*Showing 14 of 21 · …*) and the legend are each outlined. On paper the View switch is left off, the units caveat is a two-line version, and the Range view drops its "point at a row…" explanation (it keeps the sentence saying where the scale starts). The Range plot carries a heading, *Reported visitor spending, by study*, with the lanes *Out-of-town visitors* and *Local residents*.
 - **One page:** the Range view tightens its row height when many studies are shown (MTB-only off, Low on), down to a floor of 17px, so even the fullest chart prints on one Letter page. The constants are `PRINT_RANGE_MAX_H` and `PRINT_ROW_H_MIN`.
 - **Footer:** prints the full address, `www.postmillenniumrenaissance.com/studies/`. The address in the bottom-left corner of some prints (for example `postmillennium-mtb.github.io/studies/`) is the *browser's* own footer, not the page's; turn **Headers and footers** off in the print dialog to remove it.
 - **In the print dialog:** turn **Headers and footers** off (the page prints its own page numbers in Chrome and Edge 131+) and leave **Background graphics** on or off as you like — the tool forces its own bars and badges to print either way. Portrait works for every view; landscape also works, it just leaves more white.
