@@ -315,3 +315,7 @@ the sessions that built this could not open external PDFs.
   one). Grouping the rows by unit would remove the invitation; not done. The filter-bar note warns against
   the comparison the geometry invites. Considered and accepted; an open design
   question, not a bug.
+
+## License and notice (do not remove)
+
+This repo is licensed under PolyForm Noncommercial 1.0.0 (`LICENSE`). Every edit and rebuild must keep: the `Required Notice:` line at the top of `LICENSE`; the (c) / SPDX comment right after the doctype of each HTML page; and the visible `.pmr-license` footer on each page. Do not remove, reword or hide them. New pages get the same footer. Third-party material keeps its own license: never relicense it, and keep its notices. Jon holds the copyright and decides any license change.
