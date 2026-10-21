@@ -834,7 +834,6 @@ button.tierrow[aria-pressed="false"] b{text-decoration:line-through}
 footer{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);font-size:.76rem;color:var(--ink-soft)}
 footer a{color:var(--accent);font-weight:600;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}
 footer a:hover{text-decoration-thickness:2px}
-.foot-url{display:none}     /* print-only: the full address, see @media print */
 
 /* ── Theme names beside the swatches ──────────────────────────────────────────
    Its OWN breakpoint, later than the 640px one below, and measured rather than
@@ -914,8 +913,7 @@ footer a:hover{text-decoration-thickness:2px}
       three siblings in the markup). The Range view's zebra rows carry hairline
       edges (.stripedge). With Show study names ticked the Range view reserves a
       left-justified name column (PRINT_NAME_COL_W) — print only.
-   8. The footer prints the full canonical address (.foot-url) in place of the bare
-      domain. The address a browser prints in its own header/footer is the browser's,
+   8. The footer carries the full canonical address. The address a browser prints in its own header/footer is the browser's,
       not ours; the README tells people to switch that off.
    ============================================================================ */
 @page{
@@ -1064,8 +1062,7 @@ footer a:hover{text-decoration-thickness:2px}
   footer{break-inside:avoid;font-size:.7rem;margin-top:6px;padding-top:6px}
   /* The full canonical address replaces the bare domain. (The browser's own header/footer line, which shows
      whatever address the page was loaded from, is not the page's to change; see README, "In the print dialog".) */
-  .foot-home{display:none}
-  .foot-url{display:inline;font-weight:700;text-decoration:none}
+  footer a{font-weight:700;text-decoration:none}
 }
 </style>
 </head>
@@ -1143,9 +1140,9 @@ footer a:hover{text-decoration-thickness:2px}
   <div class="tooltip" id="tooltip" role="tooltip"></div>
 
   <footer>
-    Compiled by Jon Lontai for Post Millennium Renaissance ·
-    <a class="foot-home" href="https://www.postmillenniumrenaissance.com/" target="_top">postmillenniumrenaissance.com</a><a class="foot-url" href="https://www.postmillenniumrenaissance.com/studies/" target="_top">www.postmillenniumrenaissance.com/studies/</a>
-    · Sourcing discipline: every figure traces to a page number in a named study, or is marked calc, with the arithmetic and the reason for it shown in its note. See the Sources tab for what didn't make the cut and why.
+    Compiled by Jon Lontai ·
+    <a href="https://www.postmillenniumrenaissance.com/studies/" target="_top">www.postmillenniumrenaissance.com/studies/</a>
+    · Strict Data Integrity: Zero assumptions or guesses. Every figure is traced straight to the source page or marked calc with fully transparent math. Visit the Sources tab for direct links to every cited study and notes on excluded research.
   </footer>
 
 </div>
@@ -1697,6 +1694,10 @@ const PRINT_NAME_COL_W=280;      // Range view, PRINT with "Show study names" ti
                                 // The plot moves right to make room. Sized so the longest name ("Pikes Peak Region – Non-Resident
                                 // Overnight", 42 characters at 11px) fits whole; shrink it and long names start losing their
                                 // distinguishing last word to the ellipsis
+const PRINT_RANGE_MAX_H=540;     // Range view, PRINT: tallest the plot may be, in drawing units, before rows are tightened to keep the page to ONE sheet.
+                                // Measured: header, boxes and footer take the rest of a Letter page, leaving ~550 for the plot, worst case (all studies, all tiers, names on) included. Raise it and a full
+                                // (all studies, all tiers) print spills to page two; lower it and ordinary prints get tighter rows than they need
+const PRINT_ROW_H_MIN=17;       // the floor for that tightening: a 12px dot plus 2.5px above and below. Below this the dots touch their neighbours
 const NAME_CHAR_PX=6.0;         // average width of one 11px name character in that column, for fitName()
 const WIDE_MIN_PX=640;          // the one phone/desktop breakpoint the script needs to know about; it
                                  // matches the 640px @media block. Picks the tick set and whether the
@@ -2028,6 +2029,8 @@ function renderRangeView(container,rows){
   const gutter=(printWidth!=null && filterShowNames) ? PRINT_NAME_COL_W : 0;
   const x=v=>gutter+STRIP_PAD+logPct(v)/100*(W-gutter-2*STRIP_PAD);
   const ticks=logTicks();
+  const rowH=printWidth!=null ? printRowH(rows) : STRIP_ROW_H;
+  const laneHead=printWidth!=null ? 34 : 40, laneFoot=printWidth!=null ? 10 : 14;   // a print trims the gaps around each lane (see printRowH)
   const lanes=[
     {key:"nl", hi:"nlHi", cls:"nonlocal", title:UI_TEXT.laneNonlocal},
     {key:"lo", hi:"loHi", cls:"local",    title:UI_TEXT.laneLocal},
@@ -2036,7 +2039,7 @@ function renderRangeView(container,rows){
   lanes.forEach(lane=>{
     const items=rows.filter(r=>r[lane.key]!=null);
     const headY=y;
-    const rowsTop=y+40, rowsH=Math.max(items.length,1)*STRIP_ROW_H;
+    const rowsTop=y+laneHead, rowsH=Math.max(items.length,1)*rowH;
     svg+=`<text x="${STRIP_PAD}" y="${headY+14}" font-size="12" font-weight="700" fill="var(--${lane.cls})">${esc(lane.title)}</text>`;
     ticks.forEach(t=>{
       svg+=`<text x="${x(t)}" y="${headY+32}" font-size="12" fill="var(--ink-soft)" text-anchor="middle">$${t}</text>`;
@@ -2047,11 +2050,11 @@ function renderRangeView(container,rows){
     // including the empty stretch beside the dots, reveals that row's study name.
     items.forEach((r,i)=>{
       if(i%2===0){
-        const bandTop=rowsTop+i*STRIP_ROW_H;
-        svg+=`<rect x="0" y="${bandTop}" width="${W}" height="${STRIP_ROW_H}" fill="var(--track-bg)"/>`;
+        const bandTop=rowsTop+i*rowH;
+        svg+=`<rect x="0" y="${bandTop}" width="${W}" height="${rowH}" fill="var(--track-bg)"/>`;
         // Hairlines on the band's top and bottom edges. No stroke attribute here on purpose: on screen they draw nothing;
         // @media print gives .stripedge its stroke.
-        svg+=`<line class="stripedge" x1="0" y1="${bandTop}" x2="${W}" y2="${bandTop}"/><line class="stripedge" x1="0" y1="${bandTop+STRIP_ROW_H}" x2="${W}" y2="${bandTop+STRIP_ROW_H}"/>`;
+        svg+=`<line class="stripedge" x1="0" y1="${bandTop}" x2="${W}" y2="${bandTop}"/><line class="stripedge" x1="0" y1="${bandTop+rowH}" x2="${W}" y2="${bandTop+rowH}"/>`;
       }
     });
     ticks.forEach(t=>{
@@ -2059,11 +2062,11 @@ function renderRangeView(container,rows){
     });
     if(!items.length) svg+=`<text x="${STRIP_PAD}" y="${rowsTop+16}" font-size="12" font-style="italic" fill="var(--ink-soft)">${esc(UI_TEXT.laneEmpty)}</text>`;
     items.forEach((r,i)=>{
-      const top=rowsTop+i*STRIP_ROW_H, cy=top+STRIP_ROW_H/2;
+      const top=rowsTop+i*rowH, cy=top+rowH/2;
       const lo=r[lane.key], hi=(filterShowRanges && r[lane.hi]!=null) ? r[lane.hi] : null;
       const xLo=x(lo), xHi=hi!=null ? x(hi) : xLo;
       const at=`data-site="${esc(r.id)}" data-which="${lane.key}"`;
-      let row=`<rect class="striphover" x="0" y="${top}" width="${W}" height="${STRIP_ROW_H}"/>`;
+      let row=`<rect class="striphover" x="0" y="${top}" width="${W}" height="${rowH}"/>`;
       if(hi!=null) row+=`<line x1="${xLo}" y1="${cy}" x2="${xHi}" y2="${cy}" stroke="var(--${lane.cls})" stroke-width="2.5" opacity=".55"/>`;
       row+=`<circle cx="${xLo}" cy="${cy}" r="${STRIP_DOT_R}" fill="var(--${lane.cls})" stroke="var(--card)" stroke-width="1.5"/>`;
       if(hi!=null) row+=`<circle cx="${xHi}" cy="${cy}" r="${STRIP_DOT_R_HI}" fill="var(--${lane.cls})" opacity=".65" stroke="var(--card)" stroke-width="1.5"/>`;
@@ -2089,12 +2092,19 @@ function renderRangeView(container,rows){
       if(hi!=null) row+=`<circle class="stripdot" ${at} cx="${xHi}" cy="${cy}" r="${STRIP_HIT_R}" fill="transparent"/>`;
       svg+=`<g class="striprow">${row}</g>`;
     });
-    y=rowsTop+rowsH+14;
+    y=rowsTop+rowsH+laneFoot;
   });
   html+=`<div class="rangewrap"><svg class="rangesvg${filterShowNames?" shownames":""}" viewBox="0 0 ${W} ${y}" width="100%" role="img" aria-label="${esc(UI_TEXT.rangeAria)}">${svg}</svg></div>`;
   container.innerHTML=html;
   wireAxisButtons(container);
   wireBarEvents(container);
+}
+// Row height for a print, shrunk so the whole chart still fits one page when many rows are shown (MTB-only off, Low on).
+// Normal views stay at STRIP_ROW_H; only a long chart is tightened, and never below PRINT_ROW_H_MIN.
+function printRowH(rows){
+  const n=["nl","lo"].reduce((t,k)=>t+Math.max(rows.filter(r=>r[k]!=null).length,1),0);
+  const fixed=2*(34+10);   // each lane in a print: 34px above its first row, 10px below its last
+  return Math.max(PRINT_ROW_H_MIN, Math.min(STRIP_ROW_H, Math.floor((PRINT_RANGE_MAX_H-fixed)/n)));
 }
 // A study name cut to fit `room` pixels, with an ellipsis — or "" when there is no
 // room for even a few characters, in which case the row simply has no hover name
